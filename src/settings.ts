@@ -1,5 +1,5 @@
 import {App, PluginSettingTab, Setting} from "obsidian";
-import FootballNotesPlugin from "./main";
+import type FootballNotesPlugin from "./main";
 
 export interface FootballNotesSettings {
 	notesFolder: string;
@@ -7,7 +7,7 @@ export interface FootballNotesSettings {
 
 export const DEFAULT_SETTINGS: FootballNotesSettings = {
 	notesFolder: 'Football notes/matches'
-}
+};
 
 export class FootballNotesSettingTab extends PluginSettingTab {
 	plugin: FootballNotesPlugin;
@@ -24,7 +24,7 @@ export class FootballNotesSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Match notes folder')
-			.setDesc('Folder where football notes should create generated notes.')
+			.setDesc('Folder where generated match notes should be created.')
 			.addText(text => text
 				.setPlaceholder('Football notes/matches')
 				.setValue(this.plugin.settings.notesFolder)
