@@ -16,7 +16,7 @@ function buildMatchNoteMarkdown(sourceUrl: string): string {
 		'---',
 		'type: match-note',
 		'status: draft',
-		`source: ${sourceUrl}`,
+		`source: ${formatFrontmatterString(sourceUrl)}`,
 		'---',
 		'',
 		'# Match',
@@ -32,4 +32,8 @@ function buildMatchNoteMarkdown(sourceUrl: string): string {
 		'## Notes',
 		'',
 	].join('\n');
+}
+
+function formatFrontmatterString(value: string): string {
+	return JSON.stringify(value);
 }
