@@ -7,7 +7,7 @@ export default class FootballNotesPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		registerCommands(this);
+		registerCommands();
 		this.addSettingTab(new FootballNotesSettingTab(this.app, this));
 	}
 

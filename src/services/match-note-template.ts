@@ -1,7 +1,8 @@
+import {DEFAULT_MATCH_NOTES_FOLDER} from '../types';
 import type {MatchNoteDraft, MatchNoteInput} from '../types';
 
 export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
-	const destinationFolder = input.destinationFolder.trim() || 'Football notes/matches';
+	const destinationFolder = input.destinationFolder.trim() || DEFAULT_MATCH_NOTES_FOLDER;
 	const sourceUrl = input.sourceUrl.trim();
 
 	return {
