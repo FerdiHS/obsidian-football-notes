@@ -1,5 +1,5 @@
-import {normalizeMatchNotesFolder} from '../types';
-import type {MatchNoteDraft, MatchNoteInput} from '../types';
+import { normalizeMatchNotesFolder } from '../types';
+import type { MatchNoteDraft, MatchNoteInput } from '../types';
 
 export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
