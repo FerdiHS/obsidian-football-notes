@@ -30,8 +30,15 @@ export class FootballNotesSettingTab extends PluginSettingTab {
 				.setPlaceholder(DEFAULT_MATCH_NOTES_FOLDER)
 				.setValue(this.plugin.settings.notesFolder)
 				.onChange(async (value) => {
-					this.plugin.settings.notesFolder = value;
+					const normalizedValue = normalizeNotesFolder(value);
+					this.plugin.settings.notesFolder = normalizedValue;
 					await this.plugin.saveSettings();
 				}));
 	}
+}
+
+function normalizeNotesFolder(value: string): string {
+	const trimmedValue = value.trim();
+
+	return trimmedValue.length > 0 ? trimmedValue : DEFAULT_MATCH_NOTES_FOLDER;
 }

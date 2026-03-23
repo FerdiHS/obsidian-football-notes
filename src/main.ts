@@ -1,5 +1,4 @@
 import {Plugin} from 'obsidian';
-import {registerCommands} from './commands';
 import {DEFAULT_SETTINGS, FootballNotesSettings, FootballNotesSettingTab} from './settings';
 
 export default class FootballNotesPlugin extends Plugin {
@@ -7,7 +6,6 @@ export default class FootballNotesPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		registerCommands();
 		this.addSettingTab(new FootballNotesSettingTab(this.app, this));
 	}
 
