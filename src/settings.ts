@@ -1,18 +1,19 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
-import MyPlugin from "./main";
+import {App, PluginSettingTab, Setting} from 'obsidian';
+import type FootballNotesPlugin from './main';
+import {DEFAULT_MATCH_NOTES_FOLDER, normalizeMatchNotesFolder} from './types';
 
-export interface MyPluginSettings {
-	mySetting: string;
+export interface FootballNotesSettings {
+	notesFolder: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+export const DEFAULT_SETTINGS: FootballNotesSettings = {
+	notesFolder: DEFAULT_MATCH_NOTES_FOLDER
+};
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class FootballNotesSettingTab extends PluginSettingTab {
+	plugin: FootballNotesPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: FootballNotesPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -23,13 +24,14 @@ export class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
+			.setName('Match notes folder')
+			.setDesc('Folder where generated match notes should be created.')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder(DEFAULT_MATCH_NOTES_FOLDER)
+				.setValue(this.plugin.settings.notesFolder)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					const normalizedValue = normalizeMatchNotesFolder(value);
+					this.plugin.settings.notesFolder = normalizedValue;
 					await this.plugin.saveSettings();
 				}));
 	}
