@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-football-notes",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"description": "Create structured football notes in Obsidian.",
 	"main": "main.js",
 	"type": "module",
