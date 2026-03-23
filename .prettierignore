@@ -1,0 +1,6 @@
+main.js
+node_modules
+.husky/_
+package-lock.json
+.agents/
+AGENTS.md

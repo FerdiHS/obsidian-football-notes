@@ -1,5 +1,5 @@
-import {Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, FootballNotesSettings, FootballNotesSettingTab} from './settings';
+import { Plugin } from 'obsidian';
+import { DEFAULT_SETTINGS, FootballNotesSettings, FootballNotesSettingTab } from './settings';
 
 export default class FootballNotesPlugin extends Plugin {
 	settings: FootballNotesSettings;
@@ -10,7 +10,11 @@ export default class FootballNotesPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<FootballNotesSettings>);
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			(await this.loadData()) as Partial<FootballNotesSettings>,
+		);
 	}
 
 	async saveSettings() {
