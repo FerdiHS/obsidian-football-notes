@@ -24,6 +24,9 @@
 	},
 	"keywords": [],
 	"license": "0-BSD",
+	"engines": {
+		"node": ">=20.17"
+	},
 	"devDependencies": {
 		"@eslint/js": "9.30.1",
 		"@types/node": "^16.11.6",
