@@ -1,8 +1,8 @@
-import {DEFAULT_MATCH_NOTES_FOLDER} from '../types';
+import {normalizeMatchNotesFolder} from '../types';
 import type {MatchNoteDraft, MatchNoteInput} from '../types';
 
 export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
-	const destinationFolder = input.destinationFolder.trim() || DEFAULT_MATCH_NOTES_FOLDER;
+	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
 	const sourceUrl = input.sourceUrl.trim();
 
 	return {

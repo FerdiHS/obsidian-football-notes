@@ -1,6 +1,6 @@
 import {App, PluginSettingTab, Setting} from "obsidian";
 import type FootballNotesPlugin from "./main";
-import {DEFAULT_MATCH_NOTES_FOLDER} from "./types";
+import {DEFAULT_MATCH_NOTES_FOLDER, normalizeMatchNotesFolder} from "./types";
 
 export interface FootballNotesSettings {
 	notesFolder: string;
@@ -30,15 +30,9 @@ export class FootballNotesSettingTab extends PluginSettingTab {
 				.setPlaceholder(DEFAULT_MATCH_NOTES_FOLDER)
 				.setValue(this.plugin.settings.notesFolder)
 				.onChange(async (value) => {
-					const normalizedValue = normalizeNotesFolder(value);
+					const normalizedValue = normalizeMatchNotesFolder(value);
 					this.plugin.settings.notesFolder = normalizedValue;
 					await this.plugin.saveSettings();
 				}));
 	}
-}
-
-function normalizeNotesFolder(value: string): string {
-	const trimmedValue = value.trim();
-
-	return trimmedValue.length > 0 ? trimmedValue : DEFAULT_MATCH_NOTES_FOLDER;
 }
