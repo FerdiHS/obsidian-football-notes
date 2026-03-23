@@ -4,6 +4,8 @@
 
 Use a dedicated Obsidian test vault for this plugin. Do not develop against a personal vault.
 
+Contributor tooling in this repository currently requires Node.js 20.17 or newer.
+
 The canonical local setup is to clone this repository directly into the plugin folder inside the test vault:
 
 ```text

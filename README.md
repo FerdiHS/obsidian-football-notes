@@ -17,7 +17,7 @@ Planned focus areas:
 
 Requirements:
 
-- Node.js current LTS
+- Node.js >= 20.17 (current LTS or newer)
 - npm
 
 Commands:
