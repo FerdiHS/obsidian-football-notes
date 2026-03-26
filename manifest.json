@@ -1,7 +1,7 @@
 {
 	"id": "football-notes",
 	"name": "Football Notes",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"minAppVersion": "0.15.0",
 	"description": "Create structured football notes in Obsidian.",
 	"author": "FerdiHS",
