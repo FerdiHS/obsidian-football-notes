@@ -50,7 +50,7 @@ Use a dedicated Obsidian test vault for development.
 Install the plugin into:
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-football-notes/
+<Vault>/.obsidian/plugins/football-notes/
 ```
 
 and place `main.js`, `manifest.json`, and `styles.css` there.

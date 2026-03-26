@@ -9,7 +9,7 @@ Contributor tooling in this repository currently requires Node.js 20.17 or newer
 The canonical local setup is to clone this repository directly into the plugin folder inside the test vault:
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-football-notes
+<Vault>/.obsidian/plugins/football-notes
 ```
 
 That keeps the generated `main.js`, `manifest.json`, and `styles.css` at the plugin root where Obsidian expects them.
@@ -20,7 +20,7 @@ That keeps the generated `main.js`, `manifest.json`, and `styles.css` at the plu
 2. Clone this repository into:
 
     ```text
-    <Vault>/.obsidian/plugins/obsidian-football-notes
+    <Vault>/.obsidian/plugins/football-notes
     ```
 
 3. Install dependencies:
