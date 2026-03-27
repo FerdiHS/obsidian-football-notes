@@ -6,6 +6,10 @@ on:
             - main
     workflow_dispatch:
 
+concurrency:
+    group: release-please-${{ github.workflow }}
+    cancel-in-progress: false
+
 permissions:
     contents: write
     issues: write
@@ -19,10 +23,20 @@ jobs:
             release_created: ${{ steps.release.outputs.release_created }}
             tag_name: ${{ steps.release.outputs.tag_name }}
         steps:
+            - name: Generate GitHub App token
+              id: app-token
+              uses: actions/create-github-app-token@v2
+              with:
+                  app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+                  private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+                  permission-contents: write
+                  permission-issues: write
+                  permission-pull-requests: write
+
             - id: release
               uses: googleapis/release-please-action@v4
               with:
-                  token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+                  token: ${{ steps.app-token.outputs.token }}
 
     upload-release-assets:
         needs: release-please
