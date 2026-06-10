@@ -4,17 +4,17 @@ const MATCH_NOTE_FILE_EXTENSION = '.md';
 
 export function createMatchNoteTimestamp(now: Date): string {
 	return [
-		now.getFullYear().toString().padStart(4, '0'),
+		padNumber(now.getFullYear(), 4),
 		'-',
-		(now.getMonth() + 1).toString().padStart(2, '0'),
+		padNumber(now.getMonth() + 1, 2),
 		'-',
-		now.getDate().toString().padStart(2, '0'),
+		padNumber(now.getDate(), 2),
 		' ',
-		now.getHours().toString().padStart(2, '0'),
+		padNumber(now.getHours(), 2),
 		'-',
-		now.getMinutes().toString().padStart(2, '0'),
+		padNumber(now.getMinutes(), 2),
 		'-',
-		now.getSeconds().toString().padStart(2, '0'),
+		padNumber(now.getSeconds(), 2),
 	].join('');
 }
 
@@ -34,8 +34,9 @@ export function createMatchNoteCandidateFilename(
 	}
 
 	const suffix = ` ${attempt}`;
+	const baseName = baseFilename.slice(0, -MATCH_NOTE_FILE_EXTENSION.length);
 
-	return baseFilename.replace(MATCH_NOTE_FILE_EXTENSION, `${suffix}${MATCH_NOTE_FILE_EXTENSION}`);
+	return `${baseName}${suffix}${MATCH_NOTE_FILE_EXTENSION}`;
 }
 
 export function createMatchNotePath(folder: string, title: string, now: Date, attempt = 1): string {
@@ -52,4 +53,14 @@ export function getFolderCreationChain(folder: string): string[] {
 	return normalizedFolder
 		.split('/')
 		.map((_, index, segments) => segments.slice(0, index + 1).join('/'));
+}
+
+function padNumber(value: number, width: number): string {
+	const valueString = value.toString();
+
+	if (valueString.length >= width) {
+		return valueString;
+	}
+
+	return `${'0000'.slice(0, width - valueString.length)}${valueString}`;
 }

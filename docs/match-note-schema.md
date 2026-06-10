@@ -56,4 +56,4 @@ The current MVP template should create section headings only. It should not add 
 ## Naming
 
 - Placeholder note title for the current MVP template: `New match note`
-- File naming rules are intentionally deferred to the later file-creation issue.
+- File naming is handled by the note-creation service and is not part of the schema contract.

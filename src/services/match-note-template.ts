@@ -28,7 +28,11 @@ export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 }
 
 function buildMatchNoteMarkdown(sourceUrl: string): string {
-	const sectionHeadings = MATCH_NOTE_SECTIONS.flatMap((section) => [`## ${section}`, '']);
+	const sectionHeadings: string[] = [];
+
+	for (const section of MATCH_NOTE_SECTIONS) {
+		sectionHeadings.push(`## ${section}`, '');
+	}
 
 	return [
 		'---',
