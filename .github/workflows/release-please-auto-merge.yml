@@ -1,10 +1,10 @@
-name: Auto-merge Release Please PRs
+name: Release Please Approval Gate
 
 on:
     pull_request_target:
         types:
-            - opened
-            - reopened
+            - labeled
+            - unlabeled
             - synchronize
             - ready_for_review
         branches:
@@ -12,15 +12,18 @@ on:
 
 permissions:
     contents: read
+    issues: write
+    pull-requests: write
 
 jobs:
-    auto-merge:
+    invalidate-stale-approval:
         if: >
             github.event.pull_request.base.ref == 'main' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
-            !github.event.pull_request.draft &&
             startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
-            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]')
+            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
+            github.event.action == 'synchronize' &&
+            contains(github.event.pull_request.labels.*.name, 'release: ready')
         runs-on: ubuntu-latest
         timeout-minutes: 5
 
@@ -33,11 +36,93 @@ jobs:
                   private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
                   permission-contents: write
                   permission-pull-requests: write
+                  permission-issues: write
 
-            - name: Enable auto-merge for qualifying Release Please PR
-              if: ${{ github.event.pull_request.user.login == format('{0}[bot]', steps.app-token.outputs.app-slug) }}
+            - name: Disable auto-merge and remove stale approval label
+              env:
+                  GH_TOKEN: ${{ steps.app-token.outputs.token }}
+                  PR_URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+                    gh pr merge --disable-auto "$PR_URL"
+                  fi
+
+                  gh pr edit "$PR_URL" --remove-label "release: ready"
+
+    disable-auto-merge-on-label-removal:
+        if: >
+            github.event.pull_request.base.ref == 'main' &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
+            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
+            github.event.action == 'unlabeled' &&
+            github.event.label.name == 'release: ready'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        steps:
+            - name: Generate GitHub App token
+              id: app-token
+              uses: actions/create-github-app-token@v2
+              with:
+                  app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+                  private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+                  permission-contents: write
+                  permission-pull-requests: write
+                  permission-issues: write
+
+            - name: Disable auto-merge after approval label is removed
+              env:
+                  GH_TOKEN: ${{ steps.app-token.outputs.token }}
+                  PR_URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+                    gh pr merge --disable-auto "$PR_URL"
+                  fi
+
+    apply-release-approval:
+        if: >
+            github.event.pull_request.base.ref == 'main' &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
+            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
+            contains(github.event.pull_request.labels.*.name, 'release: ready') &&
+            github.event.action != 'synchronize' &&
+            (
+                github.event.action == 'ready_for_review' ||
+                (
+                    github.event.action == 'labeled' &&
+                    github.event.label.name == 'release: ready'
+                )
+            )
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        steps:
+            - name: Generate GitHub App token
+              id: app-token
+              uses: actions/create-github-app-token@v2
+              with:
+                  app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+                  private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+                  permission-contents: write
+                  permission-pull-requests: write
+                  permission-issues: write
+
+            - name: Apply release approval
               env:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   PR_URL: ${{ github.event.pull_request.html_url }}
                   PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-              run: gh pr merge --auto --squash --delete-branch --match-head-commit "$PR_HEAD_SHA" "$PR_URL"
+              run: |
+                  if [ "${GITHUB_EVENT_NAME}" = "labeled" ] && [ "${GITHUB_ACTOR}" != "FerdiHS" ]; then
+                    if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+                      gh pr merge --disable-auto "$PR_URL"
+                    fi
+
+                    gh pr edit "$PR_URL" --remove-label "release: ready"
+                    gh pr comment "$PR_URL" --body "Only @FerdiHS can apply \`release: ready\` to Release Please PRs. I removed the label and disabled auto-merge."
+                    exit 0
+                  fi
+
+                  gh pr merge --auto --squash --delete-branch --match-head-commit "$PR_HEAD_SHA" "$PR_URL"

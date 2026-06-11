@@ -57,6 +57,14 @@ jobs:
                   cache: npm
 
             - run: npm ci
+            - run: npm run version:check
+
+            - name: Verify release tag matches package version
+              env:
+                  TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+              run: |
+                  node -e "const pkg = require('./package.json'); const expected = pkg.name + '-' + pkg.version; if (process.env.TAG_NAME !== expected) { console.error('Expected release tag ' + expected + ' but got ' + process.env.TAG_NAME); process.exit(1); }"
+
             - run: npm run build
 
             - name: Upload plugin artifacts
