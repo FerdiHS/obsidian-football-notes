@@ -34,23 +34,43 @@ jobs:
                   permission-contents: write
                   permission-pull-requests: write
 
+            - name: Confirm Release Please bot authored the PR
+              id: bot-check
+              env:
+                  PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+                  APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+              run: |
+                  if [ "$PR_AUTHOR" = "${APP_SLUG}[bot]" ]; then
+                    echo "is_release_bot=true" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
+                  echo "is_release_bot=false" >> "$GITHUB_OUTPUT"
+                  echo "Skipping version metadata sync because this PR was not authored by the Release Please bot."
+
             - uses: actions/checkout@v4
+              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
               with:
                   ref: ${{ github.event.pull_request.head.ref }}
                   token: ${{ steps.app-token.outputs.token }}
                   fetch-depth: 0
 
             - name: Use Node.js 20
+              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
               uses: actions/setup-node@v4
               with:
                   node-version: 20.x
                   cache: npm
 
             - run: npm ci
+              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
             - run: npm run version:sync
+              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
             - run: npm run version:check
+              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
 
             - name: Commit version metadata changes
+              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
               env:
                   BRANCH: ${{ github.event.pull_request.head.ref }}
               run: |
