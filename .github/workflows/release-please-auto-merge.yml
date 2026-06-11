@@ -116,6 +116,8 @@ jobs:
                   PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
                   PR_ACTION: ${{ github.event.action }}
                   PR_LABELER: ${{ github.actor }}
+                  PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+                  APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
               run: |
                   if [ "$PR_ACTION" = "labeled" ] && [ "$PR_LABELER" != "FerdiHS" ]; then
                     if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
@@ -124,6 +126,16 @@ jobs:
 
                     gh pr edit "$PR_URL" --remove-label "release: ready"
                     gh pr comment "$PR_URL" --body "Only @FerdiHS can apply \`release: ready\` to Release Please PRs. I removed the label and disabled auto-merge."
+                    exit 0
+                  fi
+
+                  if [ "$PR_AUTHOR" != "${APP_SLUG}[bot]" ]; then
+                    if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+                      gh pr merge --disable-auto "$PR_URL"
+                    fi
+
+                    gh pr edit "$PR_URL" --remove-label "release: ready"
+                    gh pr comment "$PR_URL" --body "Only Release Please bot-authored PRs can be approved with \`release: ready\`. I removed the label and disabled auto-merge."
                     exit 0
                   fi
 
