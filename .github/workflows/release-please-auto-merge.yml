@@ -7,6 +7,7 @@ on:
             - unlabeled
             - synchronize
             - ready_for_review
+            - converted_to_draft
         branches:
             - main
 
@@ -22,7 +23,10 @@ jobs:
             github.event.pull_request.head.repo.full_name == github.repository &&
             startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
             contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
-            github.event.action == 'synchronize' &&
+            (
+                github.event.action == 'synchronize' ||
+                github.event.action == 'converted_to_draft'
+            ) &&
             contains(github.event.pull_request.labels.*.name, 'release: ready')
         runs-on: ubuntu-latest
         timeout-minutes: 5
@@ -117,6 +121,7 @@ jobs:
                   PR_ACTION: ${{ github.event.action }}
                   PR_LABELER: ${{ github.actor }}
                   PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+                  PR_DRAFT: ${{ github.event.pull_request.draft }}
                   APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
               run: |
                   if [ "$PR_ACTION" = "labeled" ] && [ "$PR_LABELER" != "FerdiHS" ]; then
@@ -126,6 +131,10 @@ jobs:
 
                     gh pr edit "$PR_URL" --remove-label "release: ready"
                     gh pr comment "$PR_URL" --body "Only @FerdiHS can apply \`release: ready\` to Release Please PRs. I removed the label and disabled auto-merge."
+                    exit 0
+                  fi
+
+                  if [ "$PR_DRAFT" = "true" ]; then
                     exit 0
                   fi
 
