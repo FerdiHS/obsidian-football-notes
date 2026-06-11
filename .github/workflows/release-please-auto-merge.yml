@@ -114,8 +114,10 @@ jobs:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   PR_URL: ${{ github.event.pull_request.html_url }}
                   PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+                  PR_ACTION: ${{ github.event.action }}
+                  PR_LABELER: ${{ github.actor }}
               run: |
-                  if [ "${GITHUB_EVENT_NAME}" = "labeled" ] && [ "${GITHUB_ACTOR}" != "FerdiHS" ]; then
+                  if [ "$PR_ACTION" = "labeled" ] && [ "$PR_LABELER" != "FerdiHS" ]; then
                     if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
                       gh pr merge --disable-auto "$PR_URL"
                     fi
