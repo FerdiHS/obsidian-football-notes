@@ -74,7 +74,7 @@ Release Please manages `package.json`, `package-lock.json`, `manifest.json`, and
 Tags intentionally omit a leading `v` so Git tags match the Obsidian plugin version format.
 
 Use `npm run version:sync` to add the next release entry to `versions.json` when Release Please opens a release PR, and `npm run version:check` to validate the metadata before merging.
-`version:check` is strict in Release Please branches, main-branch builds, and release-tag builds so the recorded `minAppVersion` still matches the shipped release.
+`version:check` always compares the recorded `minAppVersion` for the current release against `manifest.json` so metadata drift fails fast.
 `versions.json` is release history, so the sync script adds missing entries but does not rewrite older ones. The release PR sync workflow keeps Release Please branches aligned automatically.
 
 Only FerdiHS should apply the `release: ready` label to release PRs. The automation removes that label again if the release branch changes, so approval always applies to the latest commit.
