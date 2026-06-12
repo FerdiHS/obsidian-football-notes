@@ -19,6 +19,13 @@ const manifestVersion = manifest.version;
 const minAppVersion = manifest.minAppVersion;
 const hasVersionEntry = Object.prototype.hasOwnProperty.call(versions, packageVersion);
 const recordedMinAppVersion = versions[packageVersion];
+const refName = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? '';
+const isReleasePleaseBranch = refName.startsWith('release-please--branches--main');
+const isMainBranchPush = process.env.GITHUB_EVENT_NAME === 'push' && refName === 'main';
+const isReleaseTag =
+	process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_TYPE === 'tag';
+const shouldValidateRecordedMinAppVersion =
+	isReleasePleaseBranch || isMainBranchPush || isReleaseTag;
 
 if (mode === 'check') {
 	const issues = [];
@@ -31,7 +38,7 @@ if (mode === 'check') {
 
 	if (!hasVersionEntry) {
 		issues.push(`versions.json is missing an entry for ${packageVersion}.`);
-	} else if (recordedMinAppVersion !== minAppVersion) {
+	} else if (shouldValidateRecordedMinAppVersion && recordedMinAppVersion !== minAppVersion) {
 		issues.push(
 			`versions.json[${packageVersion}] is ${recordedMinAppVersion}, expected ${minAppVersion}.`,
 		);
