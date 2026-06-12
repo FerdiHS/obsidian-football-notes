@@ -73,7 +73,7 @@ This repository uses Conventional Commits because Release Please reads commit hi
 Release Please manages `package.json`, `package-lock.json`, `manifest.json`, and `CHANGELOG.md` after merges to `main`.
 Tags intentionally omit a leading `v` so Git tags match the Obsidian plugin version format.
 
-Use `npm run version:sync` to keep `versions.json` aligned with the current package and manifest versions, and `npm run version:check` to validate the metadata before merging.
-If you change `manifest.json` `minAppVersion`, make sure the same PR includes the matching `versions.json` entry. The release PR sync workflow keeps Release Please branches aligned automatically.
+Use `npm run version:sync` to add the next release entry to `versions.json` when Release Please opens a release PR, and `npm run version:check` to validate the metadata before merging.
+`versions.json` is release history, so the sync script adds missing entries but does not rewrite older ones. The release PR sync workflow keeps Release Please branches aligned automatically.
 
 Only FerdiHS should apply the `release: ready` label to release PRs. The automation removes that label again if the release branch changes, so approval always applies to the latest commit.

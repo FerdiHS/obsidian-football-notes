@@ -18,7 +18,6 @@ const packageVersion = packageJson.version;
 const manifestVersion = manifest.version;
 const minAppVersion = manifest.minAppVersion;
 const hasVersionEntry = Object.prototype.hasOwnProperty.call(versions, packageVersion);
-const recordedMinAppVersion = versions[packageVersion];
 
 if (mode === 'check') {
 	const issues = [];
@@ -31,10 +30,6 @@ if (mode === 'check') {
 
 	if (!hasVersionEntry) {
 		issues.push(`versions.json is missing an entry for ${packageVersion}.`);
-	} else if (recordedMinAppVersion !== minAppVersion) {
-		issues.push(
-			`versions.json[${packageVersion}] is ${recordedMinAppVersion}, expected ${minAppVersion}.`,
-		);
 	}
 
 	if (issues.length > 0) {
@@ -61,7 +56,7 @@ if (manifestVersion !== packageVersion) {
 	changed = true;
 }
 
-if (!hasVersionEntry || recordedMinAppVersion !== minAppVersion) {
+if (!hasVersionEntry) {
 	versions[packageVersion] = minAppVersion;
 	changed = true;
 }
