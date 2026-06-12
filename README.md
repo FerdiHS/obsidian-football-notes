@@ -42,6 +42,7 @@ Releases are managed with Release Please and Conventional Commits.
 
 Release Please updates `package.json`, `package-lock.json`, `manifest.json`, and `CHANGELOG.md`.
 `versions.json` stores release history, so `npm run version:sync` only adds the next missing release entry and `npm run version:check` validates the metadata before merging.
+`version:check` stays strict for Release Please branches, main-branch builds, and release-tag builds so shipped compatibility metadata still matches `manifest.json`.
 Release Please release PRs are synced automatically before merge.
 
 ## Local testing
