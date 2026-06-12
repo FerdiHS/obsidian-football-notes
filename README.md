@@ -41,7 +41,7 @@ Releases are managed with Release Please and Conventional Commits.
 - `chore:`, `docs:`, and most `refactor:` commits do not trigger releases on their own
 
 Release Please updates `package.json`, `package-lock.json`, `manifest.json`, and `CHANGELOG.md`.
-`versions.json` stores release history, so `npm run version:sync` only adds the next missing release entry and `npm run version:check` validates the metadata before merging.
+`versions.json` stores release history, so `npm run version:sync` adds the next missing release entry and refreshes the current release entry in Release Please PRs when the manifest changes, while `npm run version:check` validates the metadata before merging.
 `version:check` compares the current release entry against `manifest.json` in Release Please branches, main-branch builds, and release-tag builds so shipped compatibility metadata stays in sync.
 Release Please release PRs are synced automatically before merge.
 

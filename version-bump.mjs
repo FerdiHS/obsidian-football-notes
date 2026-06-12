@@ -26,6 +26,7 @@ const isReleaseTag =
 	process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_TYPE === 'tag';
 const shouldValidateRecordedMinAppVersion =
 	isReleasePleaseBranch || isMainBranchPush || isReleaseTag;
+const shouldRefreshRecordedMinAppVersion = isReleasePleaseBranch;
 
 if (mode === 'check') {
 	const issues = [];
@@ -68,7 +69,10 @@ if (manifestVersion !== packageVersion) {
 	changed = true;
 }
 
-if (!hasVersionEntry) {
+if (
+	!hasVersionEntry ||
+	(shouldRefreshRecordedMinAppVersion && recordedMinAppVersion !== minAppVersion)
+) {
 	versions[packageVersion] = minAppVersion;
 	changed = true;
 }
