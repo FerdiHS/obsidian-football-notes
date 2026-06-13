@@ -21,11 +21,9 @@ const hasVersionEntry = Object.prototype.hasOwnProperty.call(versions, packageVe
 const recordedMinAppVersion = versions[packageVersion];
 const refName = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? '';
 const isReleasePleaseBranch = refName.startsWith('release-please--branches--main');
-const isMainBranchPush = process.env.GITHUB_EVENT_NAME === 'push' && refName === 'main';
 const isReleaseTag =
 	process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_TYPE === 'tag';
-const shouldValidateRecordedMinAppVersion =
-	isReleasePleaseBranch || isMainBranchPush || isReleaseTag;
+const shouldValidateRecordedMinAppVersion = isReleasePleaseBranch || isReleaseTag;
 const shouldRefreshRecordedMinAppVersion = isReleasePleaseBranch;
 
 if (mode === 'check') {
