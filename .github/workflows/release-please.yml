@@ -58,6 +58,8 @@ jobs:
 
             - run: npm ci
             - run: npm run version:check
+              env:
+                  VERSION_BUMP_CONTEXT: release-tag
 
             - name: Verify release tag matches package version
               env:

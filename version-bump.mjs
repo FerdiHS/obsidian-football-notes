@@ -22,7 +22,8 @@ const recordedMinAppVersion = versions[packageVersion];
 const refName = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? '';
 const isReleasePleaseBranch = refName.startsWith('release-please--branches--main');
 const isReleaseTag =
-	process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_TYPE === 'tag';
+	process.env.VERSION_BUMP_CONTEXT === 'release-tag' ||
+	(process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_TYPE === 'tag');
 const shouldValidateRecordedMinAppVersion = isReleasePleaseBranch || isReleaseTag;
 const shouldRefreshRecordedMinAppVersion = isReleasePleaseBranch;
 
