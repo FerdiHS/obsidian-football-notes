@@ -1,9 +1,28 @@
 import { normalizeMatchNotesFolder } from '../types';
 import type { MatchNoteDraft, MatchNoteInput } from '../types';
 
+const MATCH_NOTE_FRONTMATTER = {
+	type: 'match-note',
+	sport: 'football',
+	sourceUrlKey: 'source_url',
+} as const;
+
+const MATCH_NOTE_SECTIONS = [
+	'Snapshot',
+	'Lineups',
+	'Match stats',
+	'Timeline',
+	'My observations',
+	'Tactical notes',
+] as const;
+
 export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
 	const sourceUrl = input.sourceUrl.trim();
+
+	if (sourceUrl.length === 0) {
+		throw new Error('Match note source URL cannot be empty.');
+	}
 
 	return {
 		title: 'New match note',
@@ -13,25 +32,22 @@ export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 }
 
 function buildMatchNoteMarkdown(sourceUrl: string): string {
+	const sectionHeadings: string[] = [];
+
+	for (const section of MATCH_NOTE_SECTIONS) {
+		sectionHeadings.push(`## ${section}`, '');
+	}
+
 	return [
 		'---',
-		'type: match-note',
-		'status: draft',
-		`source: ${formatFrontmatterString(sourceUrl)}`,
+		`type: ${MATCH_NOTE_FRONTMATTER.type}`,
+		`sport: ${MATCH_NOTE_FRONTMATTER.sport}`,
+		`${MATCH_NOTE_FRONTMATTER.sourceUrlKey}: ${formatFrontmatterString(sourceUrl)}`,
 		'---',
 		'',
 		'# Match',
 		'',
-		'## Summary',
-		'',
-		'## Match details',
-		'',
-		'## Lineups',
-		'',
-		'## Timeline',
-		'',
-		'## Notes',
-		'',
+		...sectionHeadings,
 	].join('\n');
 }
 
