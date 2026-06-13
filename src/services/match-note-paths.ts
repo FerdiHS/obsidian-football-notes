@@ -1,5 +1,7 @@
 import { normalizePath } from 'obsidian';
 
+import { normalizeMatchNotesFolder } from '../types';
+
 const MATCH_NOTE_FILE_EXTENSION = '.md';
 
 export function createMatchNoteTimestamp(now: Date): string {
@@ -40,11 +42,15 @@ export function createMatchNoteCandidateFilename(
 }
 
 export function createMatchNotePath(folder: string, title: string, now: Date, attempt = 1): string {
-	return normalizePath(`${folder}/${createMatchNoteCandidateFilename(title, now, attempt)}`);
+	const normalizedFolder = normalizeMatchNotesFolder(folder);
+
+	return normalizePath(
+		`${normalizedFolder}/${createMatchNoteCandidateFilename(title, now, attempt)}`,
+	);
 }
 
 export function getFolderCreationChain(folder: string): string[] {
-	const normalizedFolder = normalizePath(folder);
+	const normalizedFolder = normalizeMatchNotesFolder(folder);
 
 	if (normalizedFolder === '.' || normalizedFolder === '/') {
 		return [];

@@ -20,6 +20,10 @@ export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
 	const sourceUrl = input.sourceUrl.trim();
 
+	if (sourceUrl.length === 0) {
+		throw new Error('Match note source URL cannot be empty.');
+	}
+
 	return {
 		title: 'New match note',
 		folder: destinationFolder,
