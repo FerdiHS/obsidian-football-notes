@@ -1,17 +1,82 @@
 import { readFileSync, writeFileSync } from 'fs';
 
-const targetVersion = process.env.npm_package_version;
+const mode = process.argv[2] ?? 'sync';
 
-// read minAppVersion from manifest.json and bump version to target version
-const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
-const { minAppVersion } = manifest;
-manifest.version = targetVersion;
-writeFileSync('manifest.json', JSON.stringify(manifest, null, '\t'));
+function readJson(path) {
+	return JSON.parse(readFileSync(path, 'utf8'));
+}
 
-// update versions.json with target version and minAppVersion from manifest.json
-// but only if the target version is not already in versions.json
-const versions = JSON.parse(readFileSync('versions.json', 'utf8'));
-if (!Object.prototype.hasOwnProperty.call(versions, targetVersion)) {
-	versions[targetVersion] = minAppVersion;
-	writeFileSync('versions.json', JSON.stringify(versions, null, '\t'));
+function writeJson(path, value) {
+	writeFileSync(path, JSON.stringify(value, null, '\t'));
+}
+
+const packageJson = readJson('package.json');
+const manifest = readJson('manifest.json');
+const versions = readJson('versions.json');
+
+const packageVersion = packageJson.version;
+const manifestVersion = manifest.version;
+const minAppVersion = manifest.minAppVersion;
+const hasVersionEntry = Object.prototype.hasOwnProperty.call(versions, packageVersion);
+const recordedMinAppVersion = versions[packageVersion];
+const refName = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? '';
+const isReleasePleaseBranch = refName.startsWith('release-please--branches--main');
+const isReleaseTag =
+	process.env.VERSION_BUMP_CONTEXT === 'release-tag' ||
+	(process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_TYPE === 'tag');
+const shouldValidateRecordedMinAppVersion = isReleasePleaseBranch || isReleaseTag;
+const shouldRefreshRecordedMinAppVersion = isReleasePleaseBranch;
+
+if (mode === 'check') {
+	const issues = [];
+
+	if (packageVersion !== manifestVersion) {
+		issues.push(
+			`package.json version (${packageVersion}) does not match manifest.json version (${manifestVersion}).`,
+		);
+	}
+
+	if (!hasVersionEntry) {
+		issues.push(`versions.json is missing an entry for ${packageVersion}.`);
+	} else if (shouldValidateRecordedMinAppVersion && recordedMinAppVersion !== minAppVersion) {
+		issues.push(
+			`versions.json[${packageVersion}] is ${recordedMinAppVersion}, expected ${minAppVersion}.`,
+		);
+	}
+
+	if (issues.length > 0) {
+		console.error('Version metadata is out of sync:');
+		for (const issue of issues) {
+			console.error(`- ${issue}`);
+		}
+		console.error('Run `npm run version:sync` to update the tracked release metadata.');
+		process.exit(1);
+	}
+
+	process.exit(0);
+}
+
+if (mode !== 'sync') {
+	console.error(`Unknown mode "${mode}". Use "sync" or "check".`);
+	process.exit(1);
+}
+
+let changed = false;
+
+if (manifestVersion !== packageVersion) {
+	manifest.version = packageVersion;
+	changed = true;
+}
+
+if (
+	!hasVersionEntry ||
+	(shouldRefreshRecordedMinAppVersion && recordedMinAppVersion !== minAppVersion)
+) {
+	versions[packageVersion] = minAppVersion;
+	changed = true;
+}
+
+if (changed) {
+	writeJson('manifest.json', manifest);
+	writeJson('versions.json', versions);
 }
