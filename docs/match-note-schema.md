@@ -14,6 +14,8 @@ sport: football
 source_url: 'https://example.com/match/123'
 ```
 
+`source_url` should be written from the plugin's normalized URL parser output rather than raw user input.
+
 ### Reserved fields for later issues
 
 These fields are part of the planned schema, but they are not required or emitted by the current MVP template yet:
