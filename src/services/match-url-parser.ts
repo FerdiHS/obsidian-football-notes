@@ -58,7 +58,7 @@ export function parseMatchUrl(input: string): MatchUrlParseResult {
 		);
 	}
 
-	if (parsedUrl.username.length > 0 || parsedUrl.password.length > 0) {
+	if (containsUnsupportedAuth(trimmedInput, parsedUrl)) {
 		return createParseError(
 			'unsupported-url-auth',
 			'Match URL cannot include embedded username or password.',
@@ -109,4 +109,35 @@ function containsUnsupportedUrlCharacters(input: string): boolean {
 	}
 
 	return false;
+}
+
+function containsUnsupportedAuth(input: string, parsedUrl: URL): boolean {
+	if (parsedUrl.username.length > 0 || parsedUrl.password.length > 0) {
+		return true;
+	}
+
+	const authority = getRawAuthority(input);
+
+	return authority.includes('@');
+}
+
+function getRawAuthority(input: string): string {
+	const schemeSeparatorIndex = input.indexOf('//');
+
+	if (schemeSeparatorIndex === -1) {
+		return '';
+	}
+
+	const authorityStartIndex = schemeSeparatorIndex + 2;
+	let authorityEndIndex = input.length;
+
+	for (const separator of ['/', '?', '#']) {
+		const separatorIndex = input.indexOf(separator, authorityStartIndex);
+
+		if (separatorIndex !== -1 && separatorIndex < authorityEndIndex) {
+			authorityEndIndex = separatorIndex;
+		}
+	}
+
+	return input.slice(authorityStartIndex, authorityEndIndex);
 }
