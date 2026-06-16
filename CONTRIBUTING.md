@@ -43,6 +43,7 @@ That keeps the generated `main.js`, `manifest.json`, and `styles.css` at the plu
 Run these before pushing significant changes:
 
 ```bash
+npm run test
 npm run build
 npm run lint
 npm run format:check
