@@ -94,7 +94,7 @@ function startsWithSupportedWebScheme(input: string): boolean {
 
 function containsUnsupportedUrlCharacters(input: string): boolean {
 	for (const character of input) {
-		if (character === '\\') {
+		if (character === '\\' || /\s/u.test(character)) {
 			return true;
 		}
 
