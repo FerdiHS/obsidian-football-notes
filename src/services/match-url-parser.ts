@@ -26,6 +26,13 @@ export function parseMatchUrl(input: string): MatchUrlParseResult {
 		return createParseError('empty-url', 'Match URL cannot be empty.');
 	}
 
+	if (containsUnsupportedUrlCharacters(trimmedInput)) {
+		return createParseError(
+			'invalid-url',
+			'Enter a valid match URL including http:// or https://.',
+		);
+	}
+
 	let parsedUrl: URL;
 
 	try {
@@ -83,4 +90,23 @@ function isSupportedUrlScheme(url: URL): boolean {
 
 function startsWithSupportedWebScheme(input: string): boolean {
 	return /^https?:\/\/[^/]/i.test(input);
+}
+
+function containsUnsupportedUrlCharacters(input: string): boolean {
+	for (const character of input) {
+		if (character === '\\') {
+			return true;
+		}
+
+		const codePoint = character.codePointAt(0);
+
+		if (
+			codePoint !== undefined &&
+			((codePoint >= 0x00 && codePoint <= 0x1f) || codePoint === 0x7f)
+		) {
+			return true;
+		}
+	}
+
+	return false;
 }
