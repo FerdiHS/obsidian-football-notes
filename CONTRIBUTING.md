@@ -43,6 +43,7 @@ That keeps the generated `main.js`, `manifest.json`, and `styles.css` at the plu
 Run these before pushing significant changes:
 
 ```bash
+npm run test
 npm run build
 npm run lint
 npm run format:check
@@ -53,7 +54,7 @@ npm run format:check
 This repository installs local Git hooks with Husky:
 
 - `pre-commit`: runs `lint-staged` to format and lint staged files
-- `pre-push`: runs `npm run build`
+- `pre-push`: runs `npm run test` and `npm run build`
 
 If hooks stop working after reinstalling dependencies, run:
 

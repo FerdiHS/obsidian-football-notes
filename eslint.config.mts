@@ -31,6 +31,12 @@ export default tseslint.config(
 			],
 		},
 	},
+	{
+		files: ['src/**/*.test.ts'],
+		rules: {
+			'import/no-nodejs-modules': 'off',
+		},
+	},
 	globalIgnores([
 		'node_modules',
 		'dist',

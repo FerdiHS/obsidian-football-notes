@@ -2,6 +2,11 @@ import { normalizePath } from 'obsidian';
 
 export const DEFAULT_MATCH_NOTES_FOLDER = 'Football notes/matches';
 
+export interface MatchUrl {
+	sourceUrl: string;
+	sourceHost: string;
+}
+
 export function normalizeMatchNotesFolder(folder: string): string {
 	const trimmedFolder = folder.trim();
 
@@ -25,7 +30,7 @@ function containsParentDirectorySegment(folder: string): boolean {
 }
 
 export interface MatchNoteInput {
-	sourceUrl: string;
+	source: MatchUrl;
 	destinationFolder: string;
 }
 

@@ -18,7 +18,7 @@ const MATCH_NOTE_SECTIONS = [
 
 export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
-	const sourceUrl = input.sourceUrl.trim();
+	const sourceUrl = input.source.sourceUrl.trim();
 
 	if (sourceUrl.length === 0) {
 		throw new Error('Match note source URL cannot be empty.');
