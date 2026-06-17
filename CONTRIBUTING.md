@@ -54,7 +54,7 @@ npm run format:check
 This repository installs local Git hooks with Husky:
 
 - `pre-commit`: runs `lint-staged` to format and lint staged files
-- `pre-push`: runs `npm run build`
+- `pre-push`: runs `npm run test` and `npm run build`
 
 If hooks stop working after reinstalling dependencies, run:
 
