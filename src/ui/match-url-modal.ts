@@ -28,9 +28,18 @@ export class MatchUrlModal extends Modal {
 		});
 
 		const inputContainer = contentEl.createDiv({ cls: 'football-notes-match-url-input' });
+		const inputLabel = inputContainer.createEl('label', {
+			text: 'Match URL',
+		});
+		inputLabel.addClass('football-notes-match-url-label');
+		inputLabel.id = 'football-notes-match-url-label';
+		inputLabel.setAttr('for', 'football-notes-match-url-input');
+
 		this.matchUrlInput = new TextComponent(inputContainer);
+		this.matchUrlInput.inputEl.id = 'football-notes-match-url-input';
 		this.matchUrlInput.setPlaceholder('https://example.com/match/123');
 		this.matchUrlInput.setValue('');
+		this.matchUrlInput.inputEl.setAttr('aria-labelledby', inputLabel.id);
 		this.matchUrlInput.inputEl.focus();
 		this.matchUrlInput.inputEl.select();
 
