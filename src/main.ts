@@ -1,4 +1,5 @@
 import { Plugin } from 'obsidian';
+import { registerCommands } from './commands';
 import { DEFAULT_SETTINGS, FootballNotesSettings, FootballNotesSettingTab } from './settings';
 import { normalizeMatchNotesFolder } from './types';
 
@@ -7,6 +8,7 @@ export default class FootballNotesPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		registerCommands(this);
 		this.addSettingTab(new FootballNotesSettingTab(this.app, this));
 	}
 
