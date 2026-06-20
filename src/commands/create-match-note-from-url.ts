@@ -1,4 +1,4 @@
-import { Notice, type App, type TFile } from 'obsidian';
+import type { App, TFile } from 'obsidian';
 
 import type FootballNotesPlugin from '../main';
 import { createMatchNoteFile } from '../services/match-note-files';
@@ -35,10 +35,8 @@ export function registerCreateMatchNoteFromUrlCommand(
 	plugin: FootballNotesPlugin,
 	dependencies: Partial<CreateMatchNoteFromUrlCommandDependencies> = {},
 ): void {
-	const showNotice = dependencies.showNotice ?? ((message: string) => new Notice(message));
-	const logError =
-		dependencies.logError ??
-		((message: string, error: unknown) => console.error(message, error));
+	const showNotice = dependencies.showNotice ?? createDefaultShowNotice();
+	const logError = dependencies.logError ?? defaultLogError;
 
 	plugin.addCommand({
 		id: CREATE_MATCH_NOTE_FROM_URL_COMMAND_ID,
@@ -67,6 +65,22 @@ export function registerCreateMatchNoteFromUrlCommand(
 			}
 		},
 	});
+}
+
+function createDefaultShowNotice(): (message: string) => void {
+	return (message: string) => {
+		void import('obsidian')
+			.then(({ Notice }) => {
+				new Notice(message);
+			})
+			.catch((error) => {
+				console.error('Could not show notice.', error, message);
+			});
+	};
+}
+
+function defaultLogError(message: string, error: unknown): void {
+	console.error(message, error);
 }
 
 async function createDefaultMatchUrlModal(
