@@ -1,4 +1,4 @@
-import { normalizePath } from 'obsidian';
+import { normalizeVaultPath } from './path-utils';
 
 export const DEFAULT_MATCH_NOTES_FOLDER = 'Football notes/matches';
 
@@ -18,7 +18,7 @@ export function normalizeMatchNotesFolder(folder: string): string {
 		return DEFAULT_MATCH_NOTES_FOLDER;
 	}
 
-	const normalizedFolder = normalizePath(trimmedFolder).replace(/^\/+/, '');
+	const normalizedFolder = normalizeVaultPath(trimmedFolder).replace(/^\/+/, '');
 
 	return normalizedFolder.length > 0 && normalizedFolder !== '.'
 		? normalizedFolder

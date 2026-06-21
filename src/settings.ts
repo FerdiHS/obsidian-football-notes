@@ -2,14 +2,6 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import type FootballNotesPlugin from './main';
 import { DEFAULT_MATCH_NOTES_FOLDER, normalizeMatchNotesFolder } from './types';
 
-export interface FootballNotesSettings {
-	notesFolder: string;
-}
-
-export const DEFAULT_SETTINGS: FootballNotesSettings = {
-	notesFolder: DEFAULT_MATCH_NOTES_FOLDER,
-};
-
 export class FootballNotesSettingTab extends PluginSettingTab {
 	plugin: FootballNotesPlugin;
 
