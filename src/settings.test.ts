@@ -12,6 +12,17 @@ void test('hydrateLoadedSettings falls back to the default for malformed notesFo
 	assert.equal(result.shouldPersistNormalizedFolder, true);
 });
 
+void test('hydrateLoadedSettings repairs malformed root settings values', () => {
+	for (const malformedRoot of [null, [], 'bad']) {
+		const result = hydrateLoadedSettings(malformedRoot);
+
+		assert.deepEqual(result.settings, {
+			notesFolder: DEFAULT_SETTINGS.notesFolder,
+		});
+		assert.equal(result.shouldPersistNormalizedFolder, true);
+	}
+});
+
 void test('hydrateLoadedSettings preserves a trimmed notesFolder value and marks it for persistence', () => {
 	const result = hydrateLoadedSettings({ notesFolder: '  Football notes/matches  ' });
 

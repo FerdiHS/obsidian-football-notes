@@ -14,17 +14,18 @@ export interface HydratedLoadedSettings {
 }
 
 export function hydrateLoadedSettings(loaded: unknown): HydratedLoadedSettings {
-	const loadedSettings = isRecord(loaded) ? loaded : {};
+	const loadedIsRecord = isRecord(loaded);
+	const loadedSettings = loadedIsRecord ? loaded : {};
 	const rawNotesFolder =
 		typeof loadedSettings.notesFolder === 'string'
 			? loadedSettings.notesFolder
 			: DEFAULT_SETTINGS.notesFolder;
 	const notesFolder = normalizeMatchNotesFolder(rawNotesFolder);
 	const shouldPersistNormalizedFolder =
-		loadedSettings.notesFolder === undefined
-			? false
-			: typeof loadedSettings.notesFolder !== 'string' ||
-				loadedSettings.notesFolder !== notesFolder;
+		!loadedIsRecord ||
+		(loadedSettings.notesFolder !== undefined &&
+			(typeof loadedSettings.notesFolder !== 'string' ||
+				loadedSettings.notesFolder !== notesFolder));
 
 	return {
 		settings: {
