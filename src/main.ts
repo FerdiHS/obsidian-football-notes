@@ -1,6 +1,7 @@
 import { Plugin } from 'obsidian';
 import { registerCommands } from './commands';
-import { DEFAULT_SETTINGS, FootballNotesSettings, FootballNotesSettingTab } from './settings';
+import { FootballNotesSettingTab } from './settings';
+import { type FootballNotesSettings, hydrateLoadedSettings } from './settings-data';
 import { normalizeMatchNotesFolder } from './types';
 
 export default class FootballNotesPlugin extends Plugin {
@@ -13,18 +14,11 @@ export default class FootballNotesPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const loadedSettings = (await this.loadData()) as Partial<FootballNotesSettings>;
-		const notesFolder = normalizeMatchNotesFolder(
-			loadedSettings?.notesFolder ?? DEFAULT_SETTINGS.notesFolder,
-		);
-		const shouldPersistNormalizedFolder =
-			loadedSettings?.notesFolder !== undefined && loadedSettings.notesFolder !== notesFolder;
+		const loadedSettings = hydrateLoadedSettings(await this.loadData());
 
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings, {
-			notesFolder,
-		});
+		this.settings = loadedSettings.settings;
 
-		if (shouldPersistNormalizedFolder) {
+		if (loadedSettings.shouldPersistNormalizedFolder) {
 			await this.saveSettings();
 		}
 	}
