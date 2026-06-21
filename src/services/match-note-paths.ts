@@ -1,6 +1,5 @@
-import { normalizePath } from 'obsidian';
-
 import { normalizeMatchNotesFolder } from '../types';
+import { normalizeVaultPath } from '../path-utils';
 
 const MATCH_NOTE_FILE_EXTENSION = '.md';
 
@@ -44,7 +43,7 @@ export function createMatchNoteCandidateFilename(
 export function createMatchNotePath(folder: string, title: string, now: Date, attempt = 1): string {
 	const normalizedFolder = normalizeMatchNotesFolder(folder);
 
-	return normalizePath(
+	return normalizeVaultPath(
 		`${normalizedFolder}/${createMatchNoteCandidateFilename(title, now, attempt)}`,
 	);
 }

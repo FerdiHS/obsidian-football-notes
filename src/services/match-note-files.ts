@@ -1,8 +1,10 @@
-import { TFile, TFolder, Vault } from 'obsidian';
+import type { TFile, Vault } from 'obsidian';
 
 import type { MatchNoteInput } from '../types';
 import { createMatchNotePath, getFolderCreationChain } from './match-note-paths';
 import { createMatchNoteDraft } from './match-note-template';
+
+const MAX_MATCH_NOTE_CREATE_ATTEMPTS = 100;
 
 export async function createMatchNoteFile(vault: Vault, input: MatchNoteInput): Promise<TFile> {
 	const draft = createMatchNoteDraft(input);
@@ -20,13 +22,10 @@ async function createMatchNoteFileWithRetry(
 	now: Date,
 	content: string,
 ): Promise<TFile> {
-	let attempt = 1;
-
-	for (;;) {
+	for (let attempt = 1; attempt <= MAX_MATCH_NOTE_CREATE_ATTEMPTS; attempt += 1) {
 		const candidatePath = createMatchNotePath(folder, title, now, attempt);
 
 		if (vault.getAbstractFileByPath(candidatePath) !== null) {
-			attempt += 1;
 			continue;
 		}
 
@@ -37,13 +36,22 @@ async function createMatchNoteFileWithRetry(
 				vault.getAbstractFileByPath(candidatePath) !== null ||
 				isAlreadyExistsError(error)
 			) {
-				attempt += 1;
+				if (attempt === MAX_MATCH_NOTE_CREATE_ATTEMPTS) {
+					throw createMatchNoteRetryLimitError(
+						title,
+						folder,
+						MAX_MATCH_NOTE_CREATE_ATTEMPTS,
+					);
+				}
+
 				continue;
 			}
 
 			throw error;
 		}
 	}
+
+	throw createMatchNoteRetryLimitError(title, folder, MAX_MATCH_NOTE_CREATE_ATTEMPTS);
 }
 
 async function ensureFolderExists(vault: Vault, folder: string): Promise<void> {
@@ -56,7 +64,7 @@ async function ensureFolderExists(vault: Vault, folder: string): Promise<void> {
 			} catch (error) {
 				const createdFolder = vault.getAbstractFileByPath(folderPath);
 
-				if (createdFolder instanceof TFolder) {
+				if (isFolderLike(createdFolder)) {
 					continue;
 				}
 
@@ -75,7 +83,7 @@ async function ensureFolderExists(vault: Vault, folder: string): Promise<void> {
 			continue;
 		}
 
-		if (!(existingFile instanceof TFolder)) {
+		if (!isFolderLike(existingFile)) {
 			throw new Error(
 				`Cannot create match note folder because "${folderPath}" already exists as a file.`,
 			);
@@ -85,4 +93,14 @@ async function ensureFolderExists(vault: Vault, folder: string): Promise<void> {
 
 function isAlreadyExistsError(error: unknown): boolean {
 	return error instanceof Error && error.message.toLowerCase().includes('already exists');
+}
+
+function isFolderLike(value: unknown): value is { children: unknown[] } {
+	return typeof value === 'object' && value !== null && 'children' in value;
+}
+
+function createMatchNoteRetryLimitError(title: string, folder: string, attempts: number): Error {
+	return new Error(
+		`Could not create match note "${title}" in "${folder}" after ${attempts} attempts.`,
+	);
 }
