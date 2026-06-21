@@ -34,6 +34,33 @@ void test('createMatchNoteFile retries until it finds a free path', async () => 
 	assert.equal(globalThis.Date, originalDate);
 });
 
+void test('createMatchNoteFile retries when create races with an already existing file', async () => {
+	const fixedDate = new Date('2026-06-20T12:34:56Z');
+	const vault = new FakeVault();
+	const folder = 'Football notes/matches';
+	const firstCandidate = createMatchNotePath(folder, 'New match note', fixedDate, 1);
+	const secondCandidate = createMatchNotePath(folder, 'New match note', fixedDate, 2);
+
+	vault.failCreateOnce(firstCandidate);
+
+	await withFixedDate(fixedDate, async () => {
+		const result = await createMatchNoteFile(vault as unknown as Vault, createInput(folder));
+
+		assert.equal(result.path, secondCandidate);
+		assert.deepEqual(vault.createFolderCalls, ['Football notes', 'Football notes/matches']);
+		assert.deepEqual(vault.createCalls, [
+			{
+				path: firstCandidate,
+				content: vault.createdContent,
+			},
+			{
+				path: secondCandidate,
+				content: vault.createdContent,
+			},
+		]);
+	});
+});
+
 void test('createMatchNoteFile stops after 100 failed attempts', async () => {
 	const fixedDate = new Date('2026-06-20T12:34:56Z');
 	const vault = new FakeVault();
@@ -93,6 +120,7 @@ async function withFixedDate<T>(fixedDate: Date, callback: () => Promise<T>): Pr
 
 class FakeVault {
 	private files = new Map<string, FakeVaultEntry>();
+	private createFailures = new Set<string>();
 
 	createCalls: Array<{ path: string; content: string }> = [];
 
@@ -104,6 +132,10 @@ class FakeVault {
 		this.files.set(path, createFakeFile(path));
 	}
 
+	failCreateOnce(path: string): void {
+		this.createFailures.add(path);
+	}
+
 	getAbstractFileByPath(path: string): FakeVaultEntry | null {
 		return this.files.get(path) ?? null;
 	}
@@ -111,6 +143,11 @@ class FakeVault {
 	async create(path: string, content: string): Promise<FakeVaultEntry> {
 		this.createCalls.push({ path, content });
 		this.createdContent = content;
+
+		if (this.createFailures.has(path)) {
+			this.createFailures.delete(path);
+			throw new Error(`File already exists: ${path}`);
+		}
 
 		if (this.files.has(path)) {
 			throw new Error(`File already exists: ${path}`);
