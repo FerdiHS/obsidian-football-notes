@@ -7,7 +7,7 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"test": "node --import jiti/register --test src/services/match-url-parser.test.ts src/commands/create-match-note-from-url.test.ts src/ui/match-url-modal-state.test.ts src/settings.test.ts src/services/match-note-files.test.ts src/services/match-note-template.test.ts",
+		"test": "node --import jiti/register --test src/services/match-url-parser.test.ts src/commands/create-match-note-from-url.test.ts src/ui/match-url-modal-state.test.ts src/settings.test.ts src/services/match-note-files.test.ts src/services/match-note-template.test.ts src/services/match-note-workflow.test.ts",
 		"prepare": "husky",
 		"format": "prettier . --write",
 		"format:check": "prettier . --check",
