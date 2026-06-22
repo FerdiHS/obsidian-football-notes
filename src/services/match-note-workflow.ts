@@ -5,19 +5,20 @@ export interface MatchNoteCreatedFile {
 	name: string;
 }
 
-export interface MatchNoteWorkflowDependencies {
+export interface MatchNoteWorkflowDependencies<
+	TCreatedFile extends MatchNoteCreatedFile = MatchNoteCreatedFile,
+> {
 	destinationFolder: string;
 	parseMatchUrl?: (input: string) => MatchUrlParseResult;
-	createMatchNoteFile: (input: MatchNoteInput) => Promise<MatchNoteCreatedFile>;
-	openMatchNote: (file: MatchNoteCreatedFile) => Promise<void>;
+	createMatchNoteFile: (input: MatchNoteInput) => Promise<TCreatedFile>;
+	openMatchNote: (file: TCreatedFile) => Promise<void>;
 	showNotice: (message: string) => void;
 	logError: (message: string, error: unknown) => void;
 }
 
-export async function createMatchNoteFromUrlWorkflow(
-	input: string,
-	dependencies: MatchNoteWorkflowDependencies,
-): Promise<boolean> {
+export async function createMatchNoteFromUrlWorkflow<
+	TCreatedFile extends MatchNoteCreatedFile = MatchNoteCreatedFile,
+>(input: string, dependencies: MatchNoteWorkflowDependencies<TCreatedFile>): Promise<boolean> {
 	const parseResult = (dependencies.parseMatchUrl ?? parseMatchUrl)(input);
 
 	if (!parseResult.ok) {

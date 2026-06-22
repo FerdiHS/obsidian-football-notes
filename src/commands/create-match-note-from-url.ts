@@ -82,10 +82,6 @@ function defaultLogError(message: string, error: unknown): void {
 	console.error(message, error);
 }
 
-function isObsidianTFile(file: { name: string }): file is TFile {
-	return 'path' in file && 'basename' in file && 'vault' in file;
-}
-
 async function createDefaultMatchUrlModal(
 	app: App,
 	onSubmit: MatchUrlSubmitHandler,
@@ -104,16 +100,10 @@ export async function createMatchNoteFromUrl(
 	input: string,
 	dependencies: CreateMatchNoteFromUrlWorkflowDependencies,
 ): Promise<boolean> {
-	return await createMatchNoteFromUrlWorkflow(input, {
+	return await createMatchNoteFromUrlWorkflow<TFile>(input, {
 		destinationFolder: dependencies.destinationFolder,
 		createMatchNoteFile: dependencies.createMatchNoteFile,
-		openMatchNote: async (file) => {
-			if (!isObsidianTFile(file)) {
-				throw new Error('Created match note file is not an Obsidian TFile.');
-			}
-
-			await dependencies.openMatchNote(file);
-		},
+		openMatchNote: dependencies.openMatchNote,
 		showNotice: dependencies.showNotice,
 		logError: dependencies.logError,
 	});
