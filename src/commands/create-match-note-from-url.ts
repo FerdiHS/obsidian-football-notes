@@ -2,7 +2,7 @@ import type { App, TFile } from 'obsidian';
 
 import type FootballNotesPlugin from '../main';
 import { createMatchNoteFile } from '../services/match-note-files';
-import { parseMatchUrl, type MatchUrlParseResult } from '../services/match-url-parser';
+import { createMatchNoteFromUrlWorkflow } from '../services/match-note-workflow';
 import type { MatchNoteInput } from '../types';
 import type { MatchUrlSubmitHandler } from '../ui/match-url-modal';
 
@@ -11,7 +11,6 @@ export const CREATE_MATCH_NOTE_FROM_URL_COMMAND_NAME = 'Create match note from U
 
 export interface CreateMatchNoteFromUrlWorkflowDependencies {
 	destinationFolder: string;
-	parseMatchUrl?: (input: string) => MatchUrlParseResult;
 	createMatchNoteFile: (input: MatchNoteInput) => Promise<TFile>;
 	openMatchNote: (file: TFile) => Promise<void>;
 	showNotice: (message: string) => void;
@@ -101,34 +100,11 @@ export async function createMatchNoteFromUrl(
 	input: string,
 	dependencies: CreateMatchNoteFromUrlWorkflowDependencies,
 ): Promise<boolean> {
-	const parseResult = (dependencies.parseMatchUrl ?? parseMatchUrl)(input);
-
-	if (!parseResult.ok) {
-		dependencies.showNotice(parseResult.error.message);
-		return false;
-	}
-
-	try {
-		const createdFile = await dependencies.createMatchNoteFile({
-			source: parseResult.value,
-			destinationFolder: dependencies.destinationFolder,
-		});
-
-		try {
-			await dependencies.openMatchNote(createdFile);
-		} catch (error) {
-			dependencies.logError('Created match note, but could not open it.', error);
-			dependencies.showNotice(
-				`Created match note: ${createdFile.name}, but could not open it automatically.`,
-			);
-			return true;
-		}
-
-		dependencies.showNotice(`Created match note: ${createdFile.name}`);
-		return true;
-	} catch (error) {
-		dependencies.logError('Failed to create match note from URL.', error);
-		dependencies.showNotice('Could not create match note. See console for details.');
-		return false;
-	}
+	return await createMatchNoteFromUrlWorkflow<TFile>(input, {
+		destinationFolder: dependencies.destinationFolder,
+		createMatchNoteFile: dependencies.createMatchNoteFile,
+		openMatchNote: dependencies.openMatchNote,
+		showNotice: dependencies.showNotice,
+		logError: dependencies.logError,
+	});
 }

@@ -1,14 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { type App, type TFile } from 'obsidian';
-
 import type FootballNotesPlugin from '../main';
-import { parseMatchUrl } from '../services/match-url-parser';
 import {
 	CREATE_MATCH_NOTE_FROM_URL_COMMAND_ID,
 	CREATE_MATCH_NOTE_FROM_URL_COMMAND_NAME,
-	createMatchNoteFromUrl,
 	registerCreateMatchNoteFromUrlCommand,
 } from './create-match-note-from-url';
 
@@ -17,117 +13,6 @@ interface RegisteredCommand {
 	name: string;
 	callback: () => Promise<void>;
 }
-
-void test('createMatchNoteFromUrl creates and opens a match note for a valid URL', async () => {
-	const calls: Array<unknown> = [];
-	const createdFile = createTestFile('New match note 2026-06-20 12-34-56.md');
-
-	const result = await createMatchNoteFromUrl(' HTTPS://EXAMPLE.COM/match ', {
-		destinationFolder: 'Football notes/matches',
-		createMatchNoteFile: async (input) => {
-			calls.push(['create', input]);
-			return createdFile;
-		},
-		openMatchNote: async (file) => {
-			calls.push(['open', file]);
-		},
-		showNotice: (message) => {
-			calls.push(['notice', message]);
-		},
-		logError: (message, error) => {
-			calls.push(['error', message, (error as Error).message]);
-		},
-	});
-
-	assert.equal(result, true);
-	assert.deepEqual(calls[0], [
-		'create',
-		{
-			source: {
-				sourceUrl: 'https://example.com/match',
-				sourceHost: 'example.com',
-			},
-			destinationFolder: 'Football notes/matches',
-		},
-	]);
-	assert.deepEqual(calls[1], ['open', createdFile]);
-	assert.deepEqual(calls[2], ['notice', `Created match note: ${createdFile.name}`]);
-	assert.equal(calls.length, 3);
-});
-
-void test('createMatchNoteFromUrl shows the parser error for invalid URLs', async () => {
-	const calls: Array<unknown> = [];
-
-	const result = await createMatchNoteFromUrl('ftp://example.com/match', {
-		destinationFolder: 'Football notes/matches',
-		createMatchNoteFile: async () => {
-			throw new Error('should not be called');
-		},
-		openMatchNote: async () => {
-			throw new Error('should not be called');
-		},
-		showNotice: (message) => {
-			calls.push(['notice', message]);
-		},
-		logError: (message, error) => {
-			calls.push(['error', message, (error as Error).message]);
-		},
-	});
-
-	assert.equal(result, false);
-	assert.deepEqual(calls, [['notice', 'Match URL must use http:// or https://.']]);
-});
-
-void test('createMatchNoteFromUrl reports creation failures', async () => {
-	const calls: Array<unknown> = [];
-
-	const result = await createMatchNoteFromUrl('https://example.com/match', {
-		destinationFolder: 'Football notes/matches',
-		createMatchNoteFile: async () => {
-			throw new Error('disk full');
-		},
-		openMatchNote: async () => {
-			throw new Error('should not be called');
-		},
-		showNotice: (message) => {
-			calls.push(['notice', message]);
-		},
-		logError: (message, error) => {
-			calls.push(['error', message, (error as Error).message]);
-		},
-	});
-
-	assert.equal(result, false);
-	assert.deepEqual(calls, [
-		['error', 'Failed to create match note from URL.', 'disk full'],
-		['notice', 'Could not create match note. See console for details.'],
-	]);
-});
-
-void test('createMatchNoteFromUrl reports open failures without hiding the created note', async () => {
-	const calls: Array<unknown> = [];
-	const createdFile = createTestFile('New match note 2026-06-20 12-34-56.md');
-
-	const result = await createMatchNoteFromUrl('https://example.com/match', {
-		destinationFolder: 'Football notes/matches',
-		createMatchNoteFile: async () => createdFile,
-		openMatchNote: async () => {
-			throw new Error('workspace unavailable');
-		},
-		showNotice: (message) => {
-			calls.push(['notice', message]);
-		},
-		logError: (message, error) => {
-			calls.push(['error', message, (error as Error).message]);
-		},
-	});
-
-	assert.equal(result, true);
-	assert.deepEqual(calls, [
-		['error', 'Created match note, but could not open it.', 'workspace unavailable'],
-		['notice', `Created match note: ${createdFile.name}, but could not open it automatically.`],
-	]);
-});
 
 void test('registerCreateMatchNoteFromUrlCommand wires the command entrypoint', async () => {
 	let capturedCommand: RegisteredCommand | undefined;
@@ -139,14 +24,14 @@ void test('registerCreateMatchNoteFromUrlCommand wires the command entrypoint', 
 			capturedCommand = command;
 			return command;
 		},
-		app: {} as App,
+		app: {} as never,
 		settings: {
 			notesFolder: 'Football notes/matches',
 		},
 	} as unknown as FootballNotesPlugin;
 
 	registerCreateMatchNoteFromUrlCommand(plugin, {
-		createModal: (_app, onSubmit) => {
+		createModal: (_app: unknown, onSubmit) => {
 			createModalCalls += 1;
 			assert.equal(typeof onSubmit, 'function');
 
@@ -168,6 +53,63 @@ void test('registerCreateMatchNoteFromUrlCommand wires the command entrypoint', 
 	assert.equal(openCalls, 1);
 });
 
+void test('registerCreateMatchNoteFromUrlCommand submits the modal value through the workflow', async () => {
+	let capturedCommand: RegisteredCommand | undefined;
+	let capturedOnSubmit: ((value: string) => Promise<boolean>) | undefined;
+	const createdPaths: string[] = [];
+	const openedFiles: Array<{ name: string }> = [];
+	const notices: string[] = [];
+
+	const plugin = {
+		addCommand(command: RegisteredCommand) {
+			capturedCommand = command;
+			return command;
+		},
+		app: createTestApp(createdPaths, openedFiles),
+		settings: {
+			notesFolder: 'Scratch/matches',
+		},
+	} as unknown as FootballNotesPlugin;
+
+	registerCreateMatchNoteFromUrlCommand(plugin, {
+		createModal: (_app: unknown, onSubmit) => {
+			capturedOnSubmit = onSubmit;
+
+			return {
+				open() {
+					// The modal still opens as part of the command flow.
+				},
+			};
+		},
+		showNotice: (message) => {
+			notices.push(message);
+		},
+		logError: (message, error) => {
+			throw new Error(`${message}: ${(error as Error).message}`);
+		},
+	});
+
+	assert.ok(capturedCommand);
+
+	await capturedCommand?.callback();
+
+	assert.equal(typeof capturedOnSubmit, 'function');
+
+	const result = await capturedOnSubmit?.(' https://example.com/match ');
+
+	assert.equal(result, true);
+	assert.equal(createdPaths.length, 3);
+	assert.equal(createdPaths[0], 'Scratch');
+	assert.equal(createdPaths[1], 'Scratch/matches');
+	assert.match(
+		createdPaths[2] ?? '',
+		/^Scratch\/matches\/New match note \d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}\.md$/,
+	);
+	assert.equal(openedFiles.length, 1);
+	assert.equal(openedFiles[0]?.name.startsWith('New match note '), true);
+	assert.deepEqual(notices, [`Created match note: ${openedFiles[0]?.name}`]);
+});
+
 void test('registerCreateMatchNoteFromUrlCommand reports modal setup failures', async () => {
 	const calls: Array<unknown> = [];
 	let capturedCommand: RegisteredCommand | undefined;
@@ -177,7 +119,7 @@ void test('registerCreateMatchNoteFromUrlCommand reports modal setup failures', 
 			capturedCommand = command;
 			return command;
 		},
-		app: {} as App,
+		app: {} as never,
 		settings: {
 			notesFolder: 'Football notes/matches',
 		},
@@ -203,18 +145,38 @@ void test('registerCreateMatchNoteFromUrlCommand reports modal setup failures', 
 	]);
 });
 
-void test('parseMatchUrl keeps the workflow parser behavior intact', () => {
-	assert.equal(parseMatchUrl('https://example.com/match').ok, true);
-});
+function createTestApp(createdPaths: string[], openedFiles: Array<{ name: string }>) {
+	const entries = new Map<string, { children?: unknown[]; name: string }>();
 
-function createTestFile(name: string): TFile {
 	return {
-		vault: undefined as never,
-		path: `Football notes/matches/${name}`,
-		name,
-		parent: null,
-		stat: undefined as never,
-		basename: name.replace(/\.md$/u, ''),
-		extension: 'md',
+		vault: {
+			getAbstractFileByPath(path: string) {
+				return entries.get(path) ?? null;
+			},
+			async createFolder(path: string) {
+				createdPaths.push(path);
+				entries.set(path, {
+					name: path.split('/').at(-1) ?? path,
+					children: [],
+				});
+			},
+			async create(path: string) {
+				createdPaths.push(path);
+				const file = {
+					name: path.split('/').at(-1) ?? path,
+				};
+				entries.set(path, file);
+				return file;
+			},
+		},
+		workspace: {
+			getLeaf() {
+				return {
+					async openFile(file: { name: string }) {
+						openedFiles.push(file);
+					},
+				};
+			},
+		},
 	};
 }
