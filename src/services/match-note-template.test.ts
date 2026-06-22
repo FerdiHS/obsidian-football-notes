@@ -43,3 +43,29 @@ void test('createMatchNoteDraft renders the canonical match note schema', () => 
 		'',
 	]);
 });
+
+void test('createMatchNoteDraft rejects an empty source URL', () => {
+	assert.throws(
+		() =>
+			createMatchNoteDraft({
+				source: {
+					sourceUrl: '   ',
+					sourceHost: 'example.com',
+				},
+				destinationFolder: 'Football notes/matches',
+			}),
+		/Match note source URL cannot be empty\./,
+	);
+});
+
+void test('createMatchNoteDraft normalizes the destination folder', () => {
+	const draft = createMatchNoteDraft({
+		source: {
+			sourceUrl: 'https://example.com/match',
+			sourceHost: 'example.com',
+		},
+		destinationFolder: '  Scratch/matches  ',
+	});
+
+	assert.equal(draft.folder, 'Scratch/matches');
+});
