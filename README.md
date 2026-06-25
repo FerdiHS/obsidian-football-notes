@@ -4,7 +4,7 @@ Football Notes is an Obsidian community plugin for creating structured football 
 
 ## Status
 
-This repository is currently in the bootstrap phase. The immediate goal is to replace the sample-plugin scaffold with a clean foundation for real feature work.
+This repository is in an early MVP state focused on structured match-note generation and a stable contributor workflow.
 
 Planned focus areas:
 
@@ -55,7 +55,7 @@ Install the plugin into:
 <Vault>/.obsidian/plugins/football-notes/
 ```
 
-and place `main.js`, `manifest.json`, and `styles.css` there.
+and place `main.js` and `manifest.json` there. Add `styles.css` only if the plugin later ships CSS.
 
 For the recommended direct-checkout workflow and local hook setup, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
