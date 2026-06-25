@@ -12,7 +12,7 @@ The canonical local setup is to clone this repository directly into the plugin f
 <Vault>/.obsidian/plugins/football-notes
 ```
 
-That keeps the generated `main.js`, `manifest.json`, and `styles.css` at the plugin root where Obsidian expects them.
+That keeps the generated `main.js` and `manifest.json` at the plugin root where Obsidian expects them. `styles.css` is optional and only needed if the plugin later ships CSS.
 
 ## Local workflow
 

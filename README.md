@@ -55,7 +55,7 @@ Install the plugin into:
 <Vault>/.obsidian/plugins/football-notes/
 ```
 
-and place `main.js`, `manifest.json`, and `styles.css` there.
+and place `main.js` and `manifest.json` there. Add `styles.css` only if the plugin later ships CSS.
 
 For the recommended direct-checkout workflow and local hook setup, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
