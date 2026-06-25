@@ -4,7 +4,7 @@ Football Notes is an Obsidian community plugin for creating structured football 
 
 ## Status
 
-This repository is in an early MVP state. The immediate goal is to replace the sample-plugin scaffold with a clean foundation for real feature work.
+This repository is in an early MVP state focused on structured match-note generation and a stable contributor workflow.
 
 Planned focus areas:
 
