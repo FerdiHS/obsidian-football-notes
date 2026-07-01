@@ -1,5 +1,6 @@
 import { normalizeMatchNotesFolder } from '../types';
 import type { ManualMatchNoteInput, MatchNoteDraft, MatchNoteInput } from '../types';
+import { normalizeNoteTitle } from './note-title';
 
 const MATCH_NOTE_FRONTMATTER = {
 	type: 'match-note',
@@ -114,7 +115,9 @@ function buildManualMatchSnapshotLines(input: {
 }
 
 function formatWikiLink(value: string): string {
-	return `[[${value}]]`;
+	const normalizedTarget = normalizeNoteTitle(value);
+
+	return normalizedTarget === value ? `[[${value}]]` : `[[${normalizedTarget}|${value}]]`;
 }
 
 function normalizeManualMatchNoteField(value: string, fieldName: string): string {

@@ -104,6 +104,7 @@ void test('registerCreateMatchNoteManuallyCommand submits the modal values throu
 			awayTeam: 'Baz',
 			matchDate: '2026-07-01',
 			competition: 'Friendly',
+			sourceUrl: ' https://example.com/match ',
 		});
 
 		const expectedPath = createMatchNotePath(
@@ -117,9 +118,16 @@ void test('registerCreateMatchNoteManuallyCommand submits the modal values throu
 		assert.deepEqual(vault.createFolderCalls, ['Scratch', 'Scratch/matches']);
 		assert.equal(vault.createCalls.length, 1);
 		assert.equal(vault.createCalls[0]?.path, expectedPath);
-		assert.match(vault.createCalls[0]?.content ?? '', /- Home team: \[\[Foo\/Bar\]\]/);
+		assert.match(vault.createCalls[0]?.content ?? '', /- Home team: \[\[Foo-Bar\|Foo\/Bar\]\]/);
 		assert.match(vault.createCalls[0]?.content ?? '', /- Away team: \[\[Baz\]\]/);
-		assert.equal(vault.createCalls[0]?.content.includes('Source URL:'), false);
+		assert.match(
+			vault.createCalls[0]?.content ?? '',
+			/source_url: "https:\/\/example\.com\/match"/,
+		);
+		assert.match(
+			vault.createCalls[0]?.content ?? '',
+			/- Source URL: https:\/\/example\.com\/match/,
+		);
 		assert.deepEqual(openedFiles, [
 			{
 				path: expectedPath,

@@ -134,6 +134,19 @@ void test('createManualMatchNoteDraft includes a provided source URL', () => {
 	assert.ok(lines.includes('- Source URL: https://example.com/match'));
 });
 
+void test('createManualMatchNoteDraft sanitizes wiki link targets for special characters', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: 'Football notes/matches',
+		homeTeam: 'Foo/Bar',
+		awayTeam: 'Baz',
+		matchDate: '2026-07-01',
+		competition: 'Friendly',
+	});
+
+	assert.match(draft.content, /- Home team: \[\[Foo-Bar\|Foo\/Bar\]\]/);
+	assert.match(draft.content, /- Away team: \[\[Baz\]\]/);
+});
+
 void test('createManualMatchNoteDraft rejects empty manual fields', () => {
 	assert.throws(
 		() =>
