@@ -42,9 +42,10 @@ export function createMatchNoteCandidateFilename(
 
 export function createMatchNotePath(folder: string, title: string, now: Date, attempt = 1): string {
 	const normalizedFolder = normalizeMatchNotesFolder(folder);
+	const normalizedTitle = normalizeMatchNoteFilenameTitle(title);
 
 	return normalizeVaultPath(
-		`${normalizedFolder}/${createMatchNoteCandidateFilename(title, now, attempt)}`,
+		`${normalizedFolder}/${createMatchNoteCandidateFilename(normalizedTitle, now, attempt)}`,
 	);
 }
 
@@ -68,4 +69,14 @@ function padNumber(value: number, width: number): string {
 	}
 
 	return `${'0000'.slice(0, width - valueString.length)}${valueString}`;
+}
+
+function normalizeMatchNoteFilenameTitle(title: string): string {
+	const normalizedTitle = title
+		.trim()
+		.replace(/[\\/:*?"<>|]/g, '-')
+		.replace(/\s+/g, ' ')
+		.replace(/[. ]+$/u, '');
+
+	return normalizedTitle.length > 0 ? normalizedTitle : 'New match note';
 }

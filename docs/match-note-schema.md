@@ -14,7 +14,8 @@ sport: football
 source_url: 'https://example.com/match/123'
 ```
 
-`source_url` should be written from the plugin's normalized URL parser output rather than raw user input.
+URL-based notes must write `source_url` from the plugin's normalized URL parser output rather than raw user input.
+Manual match-note creation may omit `source_url` entirely when the user does not provide one. When present, it should still be written from normalized URL parser output.
 
 ### Reserved fields for later issues
 
@@ -48,6 +49,7 @@ Generated match notes should use this exact section order:
 ```
 
 The current MVP template should create section headings only. It should not add starter prose or machine-generated filler text inside the sections.
+Manual match-note creation may prefill the `Snapshot` section with match metadata such as home team, away team, match date, competition, and optional source URL.
 
 ## Ownership
 

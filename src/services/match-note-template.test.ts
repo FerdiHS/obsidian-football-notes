@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createMatchNoteDraft } from './match-note-template';
+import { createManualMatchNoteDraft, createMatchNoteDraft } from './match-note-template';
 
 void test('createMatchNoteDraft renders the canonical match note schema', () => {
 	const draft = createMatchNoteDraft({
@@ -68,4 +68,82 @@ void test('createMatchNoteDraft normalizes the destination folder', () => {
 	});
 
 	assert.equal(draft.folder, 'Scratch/matches');
+});
+
+void test('createManualMatchNoteDraft renders a source-free manual match note', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: ' Football notes/matches ',
+		homeTeam: 'Real Madrid',
+		awayTeam: 'Barcelona',
+		matchDate: '2026-07-01',
+		competition: 'La Liga',
+	});
+
+	assert.equal(draft.title, 'Real Madrid vs Barcelona 2026-07-01');
+	assert.equal(draft.folder, 'Football notes/matches');
+
+	const lines = draft.content.split('\n');
+
+	assert.deepEqual(lines.slice(0, 4), ['---', 'type: match-note', 'sport: football', '---']);
+	assert.deepEqual(lines.slice(4), [
+		'',
+		'# Match',
+		'',
+		'## Snapshot',
+		'',
+		'- Home team: [[Real Madrid]]',
+		'- Away team: [[Barcelona]]',
+		'- Match date: 2026-07-01',
+		'- Competition: La Liga',
+		'',
+		'## Lineups',
+		'',
+		'## Match stats',
+		'',
+		'## Timeline',
+		'',
+		'## My observations',
+		'',
+		'## Tactical notes',
+		'',
+	]);
+});
+
+void test('createManualMatchNoteDraft includes a provided source URL', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: 'Football notes/matches',
+		homeTeam: 'Real Madrid',
+		awayTeam: 'Barcelona',
+		matchDate: '2026-07-01',
+		competition: 'La Liga',
+		source: {
+			sourceUrl: ' https://example.com/match ',
+			sourceHost: 'example.com',
+		},
+	});
+
+	const lines = draft.content.split('\n');
+
+	assert.deepEqual(lines.slice(0, 5), [
+		'---',
+		'type: match-note',
+		'sport: football',
+		'source_url: "https://example.com/match"',
+		'---',
+	]);
+	assert.ok(lines.includes('- Source URL: https://example.com/match'));
+});
+
+void test('createManualMatchNoteDraft rejects empty manual fields', () => {
+	assert.throws(
+		() =>
+			createManualMatchNoteDraft({
+				destinationFolder: 'Football notes/matches',
+				homeTeam: 'Real Madrid',
+				awayTeam: ' ',
+				matchDate: '2026-07-01',
+				competition: 'La Liga',
+			}),
+		/Manual match note away team cannot be empty\./,
+	);
 });
