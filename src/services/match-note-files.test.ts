@@ -100,7 +100,7 @@ void test('createManualMatchNoteFile sanitizes the note title in the file path',
 			createMatchNotePath('Scratch/matches', 'Foo/Bar vs Baz 2026-06-20', fixedDate, 1),
 		);
 		assert.deepEqual(vault.createFolderCalls, ['Scratch', 'Scratch/matches']);
-		assert.match(vault.createdContent, /- Home team: \[\[Foo-Bar\|Foo\/Bar\]\]/);
+		assert.match(vault.createdContent, /- Home team: \[\[Foo-Bar\]\]/);
 	});
 });
 

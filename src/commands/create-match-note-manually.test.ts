@@ -118,7 +118,7 @@ void test('registerCreateMatchNoteManuallyCommand submits the modal values throu
 		assert.deepEqual(vault.createFolderCalls, ['Scratch', 'Scratch/matches']);
 		assert.equal(vault.createCalls.length, 1);
 		assert.equal(vault.createCalls[0]?.path, expectedPath);
-		assert.match(vault.createCalls[0]?.content ?? '', /- Home team: \[\[Foo-Bar\|Foo\/Bar\]\]/);
+		assert.match(vault.createCalls[0]?.content ?? '', /- Home team: \[\[Foo-Bar\]\]/);
 		assert.match(vault.createCalls[0]?.content ?? '', /- Away team: \[\[Baz\]\]/);
 		assert.match(
 			vault.createCalls[0]?.content ?? '',

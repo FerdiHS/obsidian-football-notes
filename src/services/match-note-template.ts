@@ -115,9 +115,13 @@ function buildManualMatchSnapshotLines(input: {
 }
 
 function formatWikiLink(value: string): string {
-	const normalizedTarget = normalizeNoteTitle(value);
+	const normalizedTarget = normalizeWikiLinkTarget(value);
 
-	return normalizedTarget === value ? `[[${value}]]` : `[[${normalizedTarget}|${value}]]`;
+	return `[[${normalizedTarget}]]`;
+}
+
+function normalizeWikiLinkTarget(value: string): string {
+	return normalizeNoteTitle(value).replace(/\[/g, '-').replace(/\]/g, '-');
 }
 
 function normalizeManualMatchNoteField(value: string, fieldName: string): string {

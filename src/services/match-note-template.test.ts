@@ -143,8 +143,34 @@ void test('createManualMatchNoteDraft sanitizes wiki link targets for special ch
 		competition: 'Friendly',
 	});
 
-	assert.match(draft.content, /- Home team: \[\[Foo-Bar\|Foo\/Bar\]\]/);
+	assert.match(draft.content, /- Home team: \[\[Foo-Bar\]\]/);
 	assert.match(draft.content, /- Away team: \[\[Baz\]\]/);
+});
+
+void test('createManualMatchNoteDraft sanitizes wiki link targets for bracket characters', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: 'Football notes/matches',
+		homeTeam: 'Foo]Bar',
+		awayTeam: 'Baz[Qux',
+		matchDate: '2026-07-01',
+		competition: 'Friendly',
+	});
+
+	assert.match(draft.content, /- Home team: \[\[Foo-Bar\]\]/);
+	assert.match(draft.content, /- Away team: \[\[Baz-Qux\]\]/);
+});
+
+void test('createManualMatchNoteDraft sanitizes wiki link targets for heading and block characters', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: 'Football notes/matches',
+		homeTeam: 'Foo#Bar',
+		awayTeam: 'Baz^Qux',
+		matchDate: '2026-07-01',
+		competition: 'Friendly',
+	});
+
+	assert.match(draft.content, /- Home team: \[\[Foo-Bar\]\]/);
+	assert.match(draft.content, /- Away team: \[\[Baz-Qux\]\]/);
 });
 
 void test('createManualMatchNoteDraft rejects empty manual fields', () => {
