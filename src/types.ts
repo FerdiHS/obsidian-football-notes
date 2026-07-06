@@ -65,6 +65,16 @@ export interface ManualMatchNoteSubmission {
 	sourceUrl?: string;
 }
 
+export interface TeamNoteInput {
+	destinationFolder: string;
+	name: string;
+}
+
+export interface PlayerNoteInput {
+	destinationFolder: string;
+	name: string;
+}
+
 export interface MatchNoteDraft {
 	title: string;
 	folder: string;
