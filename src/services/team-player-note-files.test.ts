@@ -5,7 +5,7 @@ import type { Vault } from 'obsidian';
 
 import { createPlayerNoteFile, createTeamNoteFile } from './team-player-note-files';
 
-void test('createTeamNoteFile creates structured team notes and avoids duplicates', async () => {
+void test('createTeamNoteFile returns the existing team note instead of duplicating it', async () => {
 	const vault = new FakeVault();
 
 	const firstFile = await createTeamNoteFile(vault as unknown as Vault, {
@@ -18,17 +18,16 @@ void test('createTeamNoteFile creates structured team notes and avoids duplicate
 		name: ' Real Madrid ',
 	});
 
-	assert.equal(firstFile.path, 'Football notes/teams/Real Madrid.md');
-	assert.equal(secondFile.path, 'Football notes/teams/Real Madrid 2.md');
+	assert.equal(firstFile.file.path, 'Football notes/teams/Real Madrid.md');
+	assert.equal(firstFile.existedAlready, false);
+	assert.strictEqual(secondFile.file, firstFile.file);
+	assert.equal(secondFile.file.path, 'Football notes/teams/Real Madrid.md');
+	assert.equal(secondFile.existedAlready, true);
 	assert.deepEqual(vault.createFolderCalls, ['Football notes', 'Football notes/teams']);
 	assert.deepEqual(vault.createCalls, [
 		{
 			path: 'Football notes/teams/Real Madrid.md',
 			content: vault.createContents[0],
-		},
-		{
-			path: 'Football notes/teams/Real Madrid 2.md',
-			content: vault.createContents[1],
 		},
 	]);
 	assert.match(vault.createContents[0] ?? '', /type: team-note/);
@@ -44,7 +43,8 @@ void test('createPlayerNoteFile creates structured player notes', async () => {
 		name: ' Lamine Yamal ',
 	});
 
-	assert.equal(file.path, 'Football notes/players/Lamine Yamal.md');
+	assert.equal(file.file.path, 'Football notes/players/Lamine Yamal.md');
+	assert.equal(file.existedAlready, false);
 	assert.deepEqual(vault.createFolderCalls, ['Football notes', 'Football notes/players']);
 	assert.deepEqual(vault.createCalls, [
 		{
@@ -55,6 +55,33 @@ void test('createPlayerNoteFile creates structured player notes', async () => {
 	assert.match(vault.createContents[0] ?? '', /type: player-note/);
 	assert.match(vault.createContents[0] ?? '', /player_name: "Lamine Yamal"/);
 	assert.match(vault.createContents[0] ?? '', /# Player Name/);
+});
+
+void test('createPlayerNoteFile returns the existing player note instead of duplicating it', async () => {
+	const vault = new FakeVault();
+
+	const firstFile = await createPlayerNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/players ',
+		name: ' Lamine Yamal ',
+	});
+
+	const secondFile = await createPlayerNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/players ',
+		name: ' Lamine Yamal ',
+	});
+
+	assert.equal(firstFile.file.path, 'Football notes/players/Lamine Yamal.md');
+	assert.equal(firstFile.existedAlready, false);
+	assert.strictEqual(secondFile.file, firstFile.file);
+	assert.equal(secondFile.file.path, 'Football notes/players/Lamine Yamal.md');
+	assert.equal(secondFile.existedAlready, true);
+	assert.deepEqual(vault.createFolderCalls, ['Football notes', 'Football notes/players']);
+	assert.deepEqual(vault.createCalls, [
+		{
+			path: 'Football notes/players/Lamine Yamal.md',
+			content: vault.createContents[0],
+		},
+	]);
 });
 
 class FakeVault {

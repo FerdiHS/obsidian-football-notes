@@ -11,6 +11,33 @@ void test('createNamedNoteWorkflow creates and opens a player note', async () =>
 	await assertNamedNoteWorkflow('player', 'Player Note');
 });
 
+void test('createNamedNoteWorkflow opens existing team notes without claiming they were created', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createNamedNoteWorkflow('Team Note', {
+		destinationFolder: 'Football notes/teams',
+		noteKind: 'team',
+		createNoteFile: async () => ({
+			file: {
+				name: 'Team Note.md',
+			},
+			existedAlready: true,
+		}),
+		openNote: async () => {
+			// The workflow should still open the existing note.
+		},
+		showNotice: (message) => {
+			calls.push(['notice', message]);
+		},
+		logError: (message, error) => {
+			calls.push(['error', message, (error as Error).message]);
+		},
+	});
+
+	assert.equal(result, true);
+	assert.deepEqual(calls, [['notice', 'Opened existing team note: Team Note.md']]);
+});
+
 void test('createNamedNoteWorkflow rejects empty team names', async () => {
 	const notices: string[] = [];
 
@@ -89,7 +116,10 @@ void test('createNamedNoteWorkflow reports open failures for team notes', async 
 		destinationFolder: 'Football notes/teams',
 		noteKind: 'team',
 		createNoteFile: async () => ({
-			name: 'Team Note.md',
+			file: {
+				name: 'Team Note.md',
+			},
+			existedAlready: false,
 		}),
 		openNote: async () => {
 			throw new Error('workspace unavailable');
@@ -123,7 +153,10 @@ async function assertNamedNoteWorkflow(
 		createNoteFile: async (input) => {
 			createdInputs.push(input);
 			return {
-				name: `${input.name}.md`,
+				file: {
+					name: `${input.name}.md`,
+				},
+				existedAlready: false,
 			};
 		},
 		openNote: async (file) => {
