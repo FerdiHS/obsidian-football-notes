@@ -17,11 +17,11 @@
 		"lint": "eslint ."
 	},
 	"lint-staged": {
-		"*.{ts,js,mjs,cjs,mts}": [
+		"**/*.{ts,js,mjs,cjs,mts}": [
 			"prettier --write",
 			"eslint --fix"
 		],
-		"*.{md,json,yml,yaml,css}": [
+		"**/*.{md,json,yml,yaml,css}": [
 			"prettier --write"
 		]
 	},

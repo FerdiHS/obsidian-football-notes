@@ -11,7 +11,7 @@ The goal is to keep generated notes predictable, Dataview-friendly, and easy to 
 Required fields:
 
 ```yaml
-type: team
+type: team-note
 sport: football
 team_name: Example FC
 ```
@@ -44,7 +44,7 @@ Optional fields:
 Required fields:
 
 ```yaml
-type: player
+type: player-note
 sport: football
 player_name: Example Player
 ```
