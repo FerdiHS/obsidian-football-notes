@@ -3,6 +3,10 @@ import { sanitizeNoteTitle } from './note-title';
 
 const NOTE_FILE_EXTENSION = '.md';
 
+export function toVaultRelativeNoteTarget(notePath: string): string {
+	return normalizeVaultPath(notePath).replace(/\.md$/i, '');
+}
+
 export function createNamedNotePath(folder: string, title: string, attempt = 1): string {
 	const normalizedFolder = normalizeVaultPath(folder).replace(/^\/+/, '');
 	const normalizedTitle = sanitizeNoteTitle(title);

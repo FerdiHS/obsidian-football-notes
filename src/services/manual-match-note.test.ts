@@ -2,12 +2,21 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createManualMatchNoteWorkflow } from './manual-match-note';
-import type { ManualMatchNoteSubmission } from '../types';
 
 void test('createManualMatchNoteWorkflow creates and opens a manual match note', async () => {
 	const notices: string[] = [];
-	const createdInputs: Array<ManualMatchNoteSubmission & { destinationFolder: string }> = [];
+	const createdInputs: Array<{
+		destinationFolder: string;
+		homeTeam: string;
+		awayTeam: string;
+		homeTeamNotePath: string;
+		awayTeamNotePath: string;
+		matchDate: string;
+		competition: string;
+		sourceUrl?: string;
+	}> = [];
 	const openedFiles: Array<{ name: string }> = [];
+	const resolvedTeamNotes: Array<{ homeTeam: string; awayTeam: string }> = [];
 
 	const result = await createManualMatchNoteWorkflow(
 		{
@@ -18,11 +27,40 @@ void test('createManualMatchNoteWorkflow creates and opens a manual match note',
 		},
 		{
 			destinationFolder: 'Football notes/matches',
+			resolveTeamNotes: async (input) => {
+				resolvedTeamNotes.push(input);
+
+				return {
+					homeTeam: {
+						notePath: 'Football notes/teams/Real Madrid',
+						existedAlready: false,
+						fileName: 'Real Madrid.md',
+						file: {
+							path: 'Football notes/teams/Real Madrid.md',
+							name: 'Real Madrid.md',
+						},
+					},
+					awayTeam: {
+						notePath: 'Football notes/teams/Barcelona',
+						existedAlready: true,
+						fileName: 'Barcelona.md',
+						file: {
+							path: 'Football notes/teams/Barcelona.md',
+							name: 'Barcelona.md',
+						},
+					},
+				};
+			},
+			deleteTeamNoteFile: async () => {
+				throw new Error('should not be called');
+			},
 			createMatchNoteFile: async (input) => {
 				createdInputs.push({
 					destinationFolder: input.destinationFolder,
 					homeTeam: input.homeTeam,
 					awayTeam: input.awayTeam,
+					homeTeamNotePath: input.homeTeamNotePath,
+					awayTeamNotePath: input.awayTeamNotePath,
 					matchDate: input.matchDate,
 					competition: input.competition,
 					sourceUrl: input.source?.sourceUrl,
@@ -45,18 +83,30 @@ void test('createManualMatchNoteWorkflow creates and opens a manual match note',
 	);
 
 	assert.equal(result, true);
+	assert.deepEqual(resolvedTeamNotes, [
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+		},
+	]);
 	assert.deepEqual(createdInputs, [
 		{
 			destinationFolder: 'Football notes/matches',
 			homeTeam: 'Real Madrid',
 			awayTeam: 'Barcelona',
+			homeTeamNotePath: 'Football notes/teams/Real Madrid',
+			awayTeamNotePath: 'Football notes/teams/Barcelona',
 			matchDate: '2026-07-01',
 			competition: 'La Liga',
 			sourceUrl: undefined,
 		},
 	]);
 	assert.deepEqual(openedFiles, [{ name: 'Real Madrid vs Barcelona 2026-07-01.md' }]);
-	assert.deepEqual(notices, ['Created match note: Real Madrid vs Barcelona 2026-07-01.md']);
+	assert.deepEqual(notices, [
+		'Created home team note: Real Madrid.md',
+		'Reused existing away team note: Barcelona.md',
+		'Created match note: Real Madrid vs Barcelona 2026-07-01.md',
+	]);
 });
 
 void test('createManualMatchNoteWorkflow shows the parser error for invalid optional source URLs', async () => {
@@ -72,6 +122,12 @@ void test('createManualMatchNoteWorkflow shows the parser error for invalid opti
 		},
 		{
 			destinationFolder: 'Football notes/matches',
+			resolveTeamNotes: async () => {
+				throw new Error('should not be called');
+			},
+			deleteTeamNoteFile: async () => {
+				throw new Error('should not be called');
+			},
 			createMatchNoteFile: async () => {
 				throw new Error('should not be called');
 			},
@@ -105,6 +161,12 @@ void test('createManualMatchNoteWorkflow rejects empty manual fields', async () 
 		},
 		{
 			destinationFolder: 'Football notes/matches',
+			resolveTeamNotes: async () => {
+				throw new Error('should not be called');
+			},
+			deleteTeamNoteFile: async () => {
+				throw new Error('should not be called');
+			},
 			createMatchNoteFile: async () => {
 				throw new Error('should not be called');
 			},
@@ -127,6 +189,113 @@ void test('createManualMatchNoteWorkflow rejects empty manual fields', async () 
 			'Failed to create manual match note.',
 			'Manual match note away team cannot be empty.',
 		],
+		['notice', 'Could not create match note. See console for details.'],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow reports team note resolution failures', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			resolveTeamNotes: async () => {
+				throw new Error(
+					'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
+				);
+			},
+			deleteTeamNoteFile: async () => {
+				throw new Error('should not be called');
+			},
+			createMatchNoteFile: async () => {
+				throw new Error('should not be called');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
+	assert.deepEqual(calls, [
+		[
+			'error',
+			'Failed to resolve manual match team notes.',
+			'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
+		],
+		['notice', 'Could not resolve team notes. See console for details.'],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow rolls back created team notes when match note creation fails', async () => {
+	const calls: Array<unknown> = [];
+	const deletedTeamNotes: string[] = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			resolveTeamNotes: async () => {
+				return {
+					homeTeam: {
+						notePath: 'Football notes/teams/Real Madrid',
+						existedAlready: false,
+						fileName: 'Real Madrid.md',
+						file: {
+							path: 'Football notes/teams/Real Madrid.md',
+							name: 'Real Madrid.md',
+						},
+					},
+					awayTeam: {
+						notePath: 'Football notes/teams/Barcelona',
+						existedAlready: true,
+						fileName: 'Barcelona.md',
+						file: {
+							path: 'Football notes/teams/Barcelona.md',
+							name: 'Barcelona.md',
+						},
+					},
+				};
+			},
+			deleteTeamNoteFile: async (file) => {
+				deletedTeamNotes.push(file.path);
+			},
+			createMatchNoteFile: async () => {
+				throw new Error('match note create failed');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
+	assert.deepEqual(deletedTeamNotes, ['Football notes/teams/Real Madrid.md']);
+	assert.deepEqual(calls, [
+		['error', 'Failed to create manual match note.', 'match note create failed'],
 		['notice', 'Could not create match note. See console for details.'],
 	]);
 });

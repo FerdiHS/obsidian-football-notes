@@ -35,6 +35,43 @@ void test('createTeamNoteFile returns the existing team note instead of duplicat
 	assert.match(vault.createContents[0] ?? '', /# Team Name/);
 });
 
+void test('createTeamNoteFile rejects a non-team file that blocks the target path', async () => {
+	const vault = new FakeVault();
+	vault.seedFile('Football notes/teams/Real Madrid.md', '# Not a team note');
+
+	await assert.rejects(
+		createTeamNoteFile(vault as unknown as Vault, {
+			destinationFolder: ' Football notes/teams ',
+			name: ' Real Madrid ',
+		}),
+		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists as a non-team file\./,
+	);
+});
+
+void test('createTeamNoteFile reuses a team note whose frontmatter ends at EOF', async () => {
+	const vault = new FakeVault();
+	vault.seedFile(
+		'Football notes/teams/Real Madrid.md',
+		[
+			'---',
+			'type: team-note',
+			'sport: football',
+			'team_name: "Real Madrid"',
+			'---',
+			'# Team Name',
+		].join('\n'),
+	);
+
+	const result = await createTeamNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/teams ',
+		name: ' Real Madrid ',
+	});
+
+	assert.equal(result.existedAlready, true);
+	assert.equal(result.file.path, 'Football notes/teams/Real Madrid.md');
+	assert.deepEqual(vault.createCalls, []);
+});
+
 void test('createPlayerNoteFile creates structured player notes', async () => {
 	const vault = new FakeVault();
 
@@ -84,14 +121,33 @@ void test('createPlayerNoteFile returns the existing player note instead of dupl
 	]);
 });
 
+void test('createPlayerNoteFile rejects a non-player file that blocks the target path', async () => {
+	const vault = new FakeVault();
+	vault.seedFile('Football notes/players/Lamine Yamal.md', '# Not a player note');
+
+	await assert.rejects(
+		createPlayerNoteFile(vault as unknown as Vault, {
+			destinationFolder: ' Football notes/players ',
+			name: ' Lamine Yamal ',
+		}),
+		/Cannot create player note because "Football notes\/players\/Lamine Yamal\.md" already exists as a non-player file\./,
+	);
+});
+
 class FakeVault {
 	private files = new Map<string, FakeVaultEntry>();
+	private fileContents = new Map<string, string>();
 
 	createCalls: Array<{ path: string; content: string }> = [];
 
 	createFolderCalls: string[] = [];
 
 	createContents: string[] = [];
+
+	seedFile(path: string, content = ''): void {
+		this.files.set(path, createFakeFile(path));
+		this.fileContents.set(path, content);
+	}
 
 	getAbstractFileByPath(path: string): FakeVaultEntry | null {
 		return this.files.get(path) ?? null;
@@ -100,6 +156,7 @@ class FakeVault {
 	async create(path: string, content: string): Promise<FakeVaultEntry> {
 		this.createCalls.push({ path, content });
 		this.createContents.push(content);
+		this.fileContents.set(path, content);
 
 		if (this.files.has(path)) {
 			throw new Error(`File already exists: ${path}`);
@@ -118,6 +175,10 @@ class FakeVault {
 		}
 
 		this.files.set(path, createFakeFolder(path));
+	}
+
+	async read(file: FakeFile): Promise<string> {
+		return this.fileContents.get(file.path) ?? '';
 	}
 }
 

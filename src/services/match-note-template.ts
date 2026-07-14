@@ -1,10 +1,12 @@
 import { normalizeMatchNotesFolder } from '../types';
 import type { ManualMatchNoteInput, MatchNoteDraft, MatchNoteInput } from '../types';
-import { normalizeNoteTitle } from './note-title';
+import { toVaultRelativeNoteTarget } from './note-paths';
 
 const MATCH_NOTE_FRONTMATTER = {
 	type: 'match-note',
 	sport: 'football',
+	homeTeamNoteKey: 'home_team_note',
+	awayTeamNoteKey: 'away_team_note',
 	sourceUrlKey: 'source_url',
 } as const;
 
@@ -49,17 +51,21 @@ export function createManualMatchNoteDraft(input: ManualMatchNoteInput): MatchNo
 		content: buildMatchNoteMarkdown({
 			snapshotLines: buildManualMatchSnapshotLines({
 				competition,
-				homeTeam,
+				homeTeamNotePath: toVaultRelativeNoteTarget(input.homeTeamNotePath),
 				matchDate,
-				awayTeam,
+				awayTeamNotePath: toVaultRelativeNoteTarget(input.awayTeamNotePath),
 				sourceUrl,
 			}),
+			homeTeamNotePath: toVaultRelativeNoteTarget(input.homeTeamNotePath),
+			awayTeamNotePath: toVaultRelativeNoteTarget(input.awayTeamNotePath),
 			sourceUrl,
 		}),
 	};
 }
 
 function buildMatchNoteMarkdown(options: {
+	homeTeamNotePath?: string;
+	awayTeamNotePath?: string;
 	sourceUrl?: string;
 	snapshotLines?: readonly string[];
 }): string {
@@ -80,6 +86,18 @@ function buildMatchNoteMarkdown(options: {
 		`sport: ${MATCH_NOTE_FRONTMATTER.sport}`,
 	];
 
+	if (options.homeTeamNotePath !== undefined) {
+		frontmatter.push(
+			`${MATCH_NOTE_FRONTMATTER.homeTeamNoteKey}: ${formatFrontmatterString(options.homeTeamNotePath)}`,
+		);
+	}
+
+	if (options.awayTeamNotePath !== undefined) {
+		frontmatter.push(
+			`${MATCH_NOTE_FRONTMATTER.awayTeamNoteKey}: ${formatFrontmatterString(options.awayTeamNotePath)}`,
+		);
+	}
+
 	if (options.sourceUrl !== undefined) {
 		frontmatter.push(
 			`${MATCH_NOTE_FRONTMATTER.sourceUrlKey}: ${formatFrontmatterString(options.sourceUrl)}`,
@@ -95,14 +113,14 @@ function formatFrontmatterString(value: string): string {
 
 function buildManualMatchSnapshotLines(input: {
 	competition: string;
-	homeTeam: string;
+	homeTeamNotePath: string;
 	matchDate: string;
-	awayTeam: string;
+	awayTeamNotePath: string;
 	sourceUrl?: string;
 }): string[] {
 	const lines = [
-		`- Home team: ${formatWikiLink(input.homeTeam)}`,
-		`- Away team: ${formatWikiLink(input.awayTeam)}`,
+		`- Home team: ${formatWikiLink(input.homeTeamNotePath)}`,
+		`- Away team: ${formatWikiLink(input.awayTeamNotePath)}`,
 		`- Match date: ${input.matchDate}`,
 		`- Competition: ${input.competition}`,
 	];
@@ -115,13 +133,7 @@ function buildManualMatchSnapshotLines(input: {
 }
 
 function formatWikiLink(value: string): string {
-	const normalizedTarget = normalizeWikiLinkTarget(value);
-
-	return `[[${normalizedTarget}]]`;
-}
-
-function normalizeWikiLinkTarget(value: string): string {
-	return normalizeNoteTitle(value).replace(/\[/g, '-').replace(/\]/g, '-');
+	return `[[${value}]]`;
 }
 
 function normalizeManualMatchNoteField(value: string, fieldName: string): string {
