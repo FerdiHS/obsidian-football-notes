@@ -186,3 +186,31 @@ void test('createManualMatchNoteDraft rejects empty manual fields', () => {
 		/Manual match note away team cannot be empty\./,
 	);
 });
+
+void test('createManualMatchNoteDraft rejects invalid manual match dates', () => {
+	assert.throws(
+		() =>
+			createManualMatchNoteDraft({
+				destinationFolder: 'Football notes/matches',
+				homeTeam: 'Real Madrid',
+				awayTeam: 'Barcelona',
+				matchDate: '2026-02-31',
+				competition: 'La Liga',
+			}),
+		/Manual match note match date must use YYYY-MM-DD and be a valid calendar date\./,
+	);
+});
+
+void test('createManualMatchNoteDraft rejects team names that normalize to empty wiki-link targets', () => {
+	assert.throws(
+		() =>
+			createManualMatchNoteDraft({
+				destinationFolder: 'Football notes/matches',
+				homeTeam: '.',
+				awayTeam: 'Barcelona',
+				matchDate: '2026-07-01',
+				competition: 'La Liga',
+			}),
+		/Manual match note home team cannot become a valid wiki link target\./,
+	);
+});

@@ -1,6 +1,12 @@
 import { normalizeMatchNotesFolder } from '../types';
 import type { ManualMatchNoteInput, MatchNoteDraft, MatchNoteInput } from '../types';
-import { normalizeNoteTitle } from './note-title';
+import {
+	normalizeManualMatchDate,
+	normalizeRequiredManualMatchNoteField,
+	normalizeManualMatchNoteWikiLinkTarget,
+	normalizeOptionalManualMatchNoteSourceUrl,
+	type ManualMatchNoteValidationResult,
+} from './manual-match-note-input';
 
 const MATCH_NOTE_FRONTMATTER = {
 	type: 'match-note',
@@ -36,11 +42,17 @@ export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 
 export function createManualMatchNoteDraft(input: ManualMatchNoteInput): MatchNoteDraft {
 	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
-	const homeTeam = normalizeManualMatchNoteField(input.homeTeam, 'home team');
-	const awayTeam = normalizeManualMatchNoteField(input.awayTeam, 'away team');
-	const matchDate = normalizeManualMatchNoteField(input.matchDate, 'match date');
-	const competition = normalizeManualMatchNoteField(input.competition, 'competition');
-	const sourceUrl = normalizeOptionalMatchNoteSourceUrl(input.source?.sourceUrl);
+	const homeTeam = requireManualMatchNoteValue(
+		normalizeRequiredManualMatchNoteField(input.homeTeam, 'home team'),
+	);
+	const awayTeam = requireManualMatchNoteValue(
+		normalizeRequiredManualMatchNoteField(input.awayTeam, 'away team'),
+	);
+	const matchDate = requireManualMatchNoteValue(normalizeManualMatchDate(input.matchDate));
+	const competition = requireManualMatchNoteValue(
+		normalizeRequiredManualMatchNoteField(input.competition, 'competition'),
+	);
+	const sourceUrl = normalizeOptionalManualMatchNoteSourceUrl(input.source?.sourceUrl);
 	const title = `${homeTeam} vs ${awayTeam} ${matchDate}`;
 
 	return {
@@ -101,8 +113,8 @@ function buildManualMatchSnapshotLines(input: {
 	sourceUrl?: string;
 }): string[] {
 	const lines = [
-		`- Home team: ${formatWikiLink(input.homeTeam)}`,
-		`- Away team: ${formatWikiLink(input.awayTeam)}`,
+		`- Home team: ${formatWikiLink(input.homeTeam, 'home team')}`,
+		`- Away team: ${formatWikiLink(input.awayTeam, 'away team')}`,
 		`- Match date: ${input.matchDate}`,
 		`- Competition: ${input.competition}`,
 	];
@@ -114,28 +126,18 @@ function buildManualMatchSnapshotLines(input: {
 	return lines;
 }
 
-function formatWikiLink(value: string): string {
-	const normalizedTarget = normalizeWikiLinkTarget(value);
+function formatWikiLink(value: string, fieldName: string): string {
+	const normalizedTarget = requireManualMatchNoteValue(
+		normalizeManualMatchNoteWikiLinkTarget(value, fieldName),
+	);
 
 	return `[[${normalizedTarget}]]`;
 }
 
-function normalizeWikiLinkTarget(value: string): string {
-	return normalizeNoteTitle(value).replace(/\[/g, '-').replace(/\]/g, '-');
-}
-
-function normalizeManualMatchNoteField(value: string, fieldName: string): string {
-	const trimmedValue = value.trim();
-
-	if (trimmedValue.length === 0) {
-		throw new Error(`Manual match note ${fieldName} cannot be empty.`);
+function requireManualMatchNoteValue<T>(result: ManualMatchNoteValidationResult<T>): T {
+	if (!result.ok) {
+		throw new Error(result.error.message);
 	}
 
-	return trimmedValue;
-}
-
-function normalizeOptionalMatchNoteSourceUrl(value: string | undefined): string | undefined {
-	const trimmedValue = value?.trim();
-
-	return trimmedValue !== undefined && trimmedValue.length > 0 ? trimmedValue : undefined;
+	return result.value;
 }

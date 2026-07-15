@@ -121,12 +121,147 @@ void test('createManualMatchNoteWorkflow rejects empty manual fields', async () 
 	);
 
 	assert.equal(result, false);
+	assert.deepEqual(calls, [['notice', 'Manual match note away team cannot be empty.']]);
+});
+
+void test('createManualMatchNoteWorkflow rejects invalid manual match dates', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-02-31',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			createMatchNoteFile: async () => {
+				throw new Error('should not be called');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
 	assert.deepEqual(calls, [
 		[
-			'error',
-			'Failed to create manual match note.',
-			'Manual match note away team cannot be empty.',
+			'notice',
+			'Manual match note match date must use YYYY-MM-DD and be a valid calendar date.',
 		],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow rejects match teams that normalize to empty wiki link targets', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: '.',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			createMatchNoteFile: async () => {
+				throw new Error('should not be called');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
+	assert.deepEqual(calls, [
+		['notice', 'Manual match note home team cannot become a valid wiki link target.'],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow reports file creation failures', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			createMatchNoteFile: async () => {
+				throw new Error('disk full');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
+	assert.deepEqual(calls, [
+		['error', 'Failed to create manual match note.', 'disk full'],
 		['notice', 'Could not create match note. See console for details.'],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow reports open failures after successful creation', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			createMatchNoteFile: async () => {
+				return {
+					name: 'Real Madrid vs Barcelona 2026-07-01.md',
+				};
+			},
+			openMatchNote: async () => {
+				throw new Error('cannot open file');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, true);
+	assert.deepEqual(calls, [
+		['error', 'Created match note, but could not open it.', 'cannot open file'],
+		[
+			'notice',
+			'Created match note: Real Madrid vs Barcelona 2026-07-01.md, but could not open it automatically.',
+		],
 	]);
 });
