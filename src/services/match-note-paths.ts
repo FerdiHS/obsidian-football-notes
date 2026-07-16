@@ -1,5 +1,6 @@
 import { normalizeMatchNotesFolder } from '../types';
 import { normalizeVaultPath } from '../path-utils';
+import { normalizeNoteTitle } from './note-title';
 
 const MATCH_NOTE_FILE_EXTENSION = '.md';
 
@@ -42,9 +43,10 @@ export function createMatchNoteCandidateFilename(
 
 export function createMatchNotePath(folder: string, title: string, now: Date, attempt = 1): string {
 	const normalizedFolder = normalizeMatchNotesFolder(folder);
+	const normalizedTitle = normalizeNoteTitle(title);
 
 	return normalizeVaultPath(
-		`${normalizedFolder}/${createMatchNoteCandidateFilename(title, now, attempt)}`,
+		`${normalizedFolder}/${createMatchNoteCandidateFilename(normalizedTitle, now, attempt)}`,
 	);
 }
 

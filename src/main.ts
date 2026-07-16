@@ -2,7 +2,11 @@ import { Plugin } from 'obsidian';
 import { registerCommands } from './commands';
 import { FootballNotesSettingTab } from './settings';
 import { type FootballNotesSettings, hydrateLoadedSettings } from './settings-data';
-import { normalizeMatchNotesFolder } from './types';
+import {
+	normalizeMatchNotesFolder,
+	normalizePlayerNotesFolder,
+	normalizeTeamNotesFolder,
+} from './types';
 
 export default class FootballNotesPlugin extends Plugin {
 	settings: FootballNotesSettings;
@@ -18,13 +22,17 @@ export default class FootballNotesPlugin extends Plugin {
 
 		this.settings = loadedSettings.settings;
 
-		if (loadedSettings.shouldPersistNormalizedFolder) {
+		if (loadedSettings.shouldPersistNormalizedSettings) {
 			await this.saveSettings();
 		}
 	}
 
 	async saveSettings() {
 		this.settings.notesFolder = normalizeMatchNotesFolder(this.settings.notesFolder);
+		this.settings.teamNotesFolder = normalizeTeamNotesFolder(this.settings.teamNotesFolder);
+		this.settings.playerNotesFolder = normalizePlayerNotesFolder(
+			this.settings.playerNotesFolder,
+		);
 		await this.saveData(this.settings);
 	}
 }

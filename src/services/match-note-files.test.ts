@@ -3,9 +3,9 @@ import test from 'node:test';
 
 import type { Vault } from 'obsidian';
 
-import { createMatchNoteFile } from './match-note-files';
+import { createManualMatchNoteFile, createMatchNoteFile } from './match-note-files';
 import { createMatchNotePath } from './match-note-paths';
-import type { MatchNoteInput } from '../types';
+import type { ManualMatchNoteInput, MatchNoteInput } from '../types';
 
 void test('createMatchNoteFile retries until it finds a free path', async () => {
 	const fixedDate = new Date('2026-06-20T12:34:56Z');
@@ -78,6 +78,29 @@ void test('createMatchNoteFile stops after 100 failed attempts', async () => {
 			createMatchNoteFile(vault as unknown as Vault, createInput(folder)),
 			/Could not create match note "New match note" in "Football notes\/matches" after 100 attempts\./i,
 		);
+	});
+});
+
+void test('createManualMatchNoteFile sanitizes the note title in the file path', async () => {
+	const fixedDate = new Date('2026-06-20T12:34:56Z');
+	const vault = new FakeVault();
+	const input: ManualMatchNoteInput = {
+		destinationFolder: 'Scratch/matches',
+		homeTeam: 'Foo/Bar',
+		awayTeam: 'Baz',
+		matchDate: '2026-06-20',
+		competition: 'Friendly',
+	};
+
+	await withFixedDate(fixedDate, async () => {
+		const result = await createManualMatchNoteFile(vault as unknown as Vault, input);
+
+		assert.equal(
+			result.path,
+			createMatchNotePath('Scratch/matches', 'Foo/Bar vs Baz 2026-06-20', fixedDate, 1),
+		);
+		assert.deepEqual(vault.createFolderCalls, ['Scratch', 'Scratch/matches']);
+		assert.match(vault.createdContent, /- Home team: \[\[Foo-Bar\]\]/);
 	});
 });
 

@@ -1,13 +1,26 @@
 import type { TFile, Vault } from 'obsidian';
 
-import type { MatchNoteInput } from '../types';
+import type { ManualMatchNoteInput, MatchNoteDraft, MatchNoteInput } from '../types';
 import { createMatchNotePath, getFolderCreationChain } from './match-note-paths';
-import { createMatchNoteDraft } from './match-note-template';
+import { createManualMatchNoteDraft, createMatchNoteDraft } from './match-note-template';
 
 const MAX_MATCH_NOTE_CREATE_ATTEMPTS = 100;
 
 export async function createMatchNoteFile(vault: Vault, input: MatchNoteInput): Promise<TFile> {
-	const draft = createMatchNoteDraft(input);
+	return await createMatchNoteFileFromDraft(vault, createMatchNoteDraft(input));
+}
+
+export async function createManualMatchNoteFile(
+	vault: Vault,
+	input: ManualMatchNoteInput,
+): Promise<TFile> {
+	return await createMatchNoteFileFromDraft(vault, createManualMatchNoteDraft(input));
+}
+
+export async function createMatchNoteFileFromDraft(
+	vault: Vault,
+	draft: MatchNoteDraft,
+): Promise<TFile> {
 	const now = new Date();
 
 	await ensureFolderExists(vault, draft.folder);
