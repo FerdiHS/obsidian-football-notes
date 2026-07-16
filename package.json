@@ -1,13 +1,13 @@
 {
 	"name": "football-notes",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "Create structured football notes in Obsidian.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"test": "node --import jiti/register --test src/services/match-url-parser.test.ts src/commands/create-match-note-from-url.test.ts src/commands/create-match-note-manually.test.ts src/commands/create-team-note.test.ts src/commands/create-player-note.test.ts src/ui/match-url-modal-state.test.ts src/settings.test.ts src/team-player-note-schemas.test.ts src/services/match-note-files.test.ts src/services/team-player-note-files.test.ts src/services/match-note-template.test.ts src/services/team-player-note-template.test.ts src/services/note-title.test.ts src/services/match-note-workflow.test.ts src/services/team-player-note-workflow.test.ts src/services/manual-match-note.test.ts src/services/manual-match-team-notes.test.ts",
+		"test": "node --import jiti/register --test src/services/match-url-parser.test.ts src/commands/create-match-note-from-url.test.ts src/commands/create-match-note-manually.test.ts src/commands/create-team-note.test.ts src/commands/create-player-note.test.ts src/ui/match-url-modal-state.test.ts src/settings.test.ts src/team-player-note-schemas.test.ts src/services/match-note-files.test.ts src/services/team-player-note-files.test.ts src/services/match-note-template.test.ts src/services/team-player-note-template.test.ts src/services/note-title.test.ts src/services/match-note-workflow.test.ts src/services/team-player-note-workflow.test.ts src/services/manual-match-note-input.test.ts src/services/manual-match-note.test.ts src/services/manual-match-team-notes.test.ts",
 		"prepare": "husky",
 		"format": "prettier . --write",
 		"format:check": "prettier . --check",

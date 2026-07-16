@@ -164,6 +164,21 @@ void test('createManualMatchNoteDraft preserves the provided team note paths', (
 	assert.match(draft.content, /- Away team: \[\[Football notes\/teams\/Barcelona\]\]/);
 });
 
+void test('createManualMatchNoteDraft escapes wiki link targets for special characters', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: 'Football notes/matches',
+		homeTeam: 'Foo',
+		awayTeam: 'Baz',
+		homeTeamNotePath: 'Football notes/teams/Foo[Bar]',
+		awayTeamNotePath: 'Football notes/teams/Baz#Qux',
+		matchDate: '2026-07-01',
+		competition: 'Friendly',
+	});
+
+	assert.ok(draft.content.includes('- Home team: [[Football notes/teams/Foo\\[Bar\\]]]'));
+	assert.ok(draft.content.includes('- Away team: [[Football notes/teams/Baz\\#Qux]]'));
+});
+
 void test('createManualMatchNoteDraft rejects empty manual fields', () => {
 	assert.throws(
 		() =>
@@ -177,5 +192,37 @@ void test('createManualMatchNoteDraft rejects empty manual fields', () => {
 				competition: 'La Liga',
 			}),
 		/Manual match note away team cannot be empty\./,
+	);
+});
+
+void test('createManualMatchNoteDraft rejects invalid manual match dates', () => {
+	assert.throws(
+		() =>
+			createManualMatchNoteDraft({
+				destinationFolder: 'Football notes/matches',
+				homeTeam: 'Real Madrid',
+				awayTeam: 'Barcelona',
+				homeTeamNotePath: 'Football notes/teams/Real Madrid',
+				awayTeamNotePath: 'Football notes/teams/Barcelona',
+				matchDate: '2026-02-31',
+				competition: 'La Liga',
+			}),
+		/Manual match note match date must use YYYY-MM-DD and be a valid calendar date\./,
+	);
+});
+
+void test('createManualMatchNoteDraft rejects team names that normalize to empty wiki-link targets', () => {
+	assert.throws(
+		() =>
+			createManualMatchNoteDraft({
+				destinationFolder: 'Football notes/matches',
+				homeTeam: '.',
+				awayTeam: 'Barcelona',
+				homeTeamNotePath: 'Football notes/teams/Real Madrid',
+				awayTeamNotePath: 'Football notes/teams/Barcelona',
+				matchDate: '2026-07-01',
+				competition: 'La Liga',
+			}),
+		/Manual match note home team cannot become a valid wiki link target\./,
 	);
 });

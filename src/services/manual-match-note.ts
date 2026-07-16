@@ -4,6 +4,12 @@ import type {
 	ManualMatchTeamNoteFileLike,
 	ManualMatchTeamNoteResolution,
 } from './manual-match-team-notes';
+import {
+	normalizeManualMatchDate,
+	normalizeRequiredManualMatchNoteField,
+	normalizeManualMatchNoteWikiLinkTarget,
+	normalizeOptionalManualMatchNoteSourceUrl,
+} from './manual-match-note-input';
 import type { ManualMatchNoteInput, ManualMatchNoteSubmission } from '../types';
 
 export interface ManualMatchNoteWorkflowDependencies<
@@ -118,11 +124,37 @@ function normalizeManualMatchNoteSubmission(
 				message: string;
 			};
 	  } {
-	const homeTeam = normalizeManualMatchNoteField(input.homeTeam, 'home team');
-	const awayTeam = normalizeManualMatchNoteField(input.awayTeam, 'away team');
-	const matchDate = normalizeManualMatchNoteField(input.matchDate, 'match date');
-	const competition = normalizeManualMatchNoteField(input.competition, 'competition');
-	const sourceUrl = input.sourceUrl?.trim();
+	const homeTeam = normalizeRequiredManualMatchNoteField(input.homeTeam, 'home team');
+	if (!homeTeam.ok) {
+		return homeTeam;
+	}
+
+	const awayTeam = normalizeRequiredManualMatchNoteField(input.awayTeam, 'away team');
+	if (!awayTeam.ok) {
+		return awayTeam;
+	}
+
+	const matchDate = normalizeManualMatchDate(input.matchDate);
+	if (!matchDate.ok) {
+		return matchDate;
+	}
+
+	const competition = normalizeRequiredManualMatchNoteField(input.competition, 'competition');
+	if (!competition.ok) {
+		return competition;
+	}
+
+	const homeTeamLinkTarget = normalizeManualMatchNoteWikiLinkTarget(homeTeam.value, 'home team');
+	if (!homeTeamLinkTarget.ok) {
+		return homeTeamLinkTarget;
+	}
+
+	const awayTeamLinkTarget = normalizeManualMatchNoteWikiLinkTarget(awayTeam.value, 'away team');
+	if (!awayTeamLinkTarget.ok) {
+		return awayTeamLinkTarget;
+	}
+
+	const sourceUrl = normalizeOptionalManualMatchNoteSourceUrl(input.sourceUrl);
 
 	if (sourceUrl !== undefined && sourceUrl.length > 0) {
 		const parseResult = (parseMatchUrlOverride ?? parseMatchUrl)(sourceUrl);
@@ -139,10 +171,10 @@ function normalizeManualMatchNoteSubmission(
 		return {
 			ok: true,
 			value: {
-				homeTeam,
-				awayTeam,
-				matchDate,
-				competition,
+				homeTeam: homeTeam.value,
+				awayTeam: awayTeam.value,
+				matchDate: matchDate.value,
+				competition: competition.value,
 				source: parseResult.value,
 			},
 		};
@@ -151,22 +183,12 @@ function normalizeManualMatchNoteSubmission(
 	return {
 		ok: true,
 		value: {
-			homeTeam,
-			awayTeam,
-			matchDate,
-			competition,
+			homeTeam: homeTeam.value,
+			awayTeam: awayTeam.value,
+			matchDate: matchDate.value,
+			competition: competition.value,
 		},
 	};
-}
-
-function normalizeManualMatchNoteField(value: string, fieldName: string): string {
-	const trimmedValue = value.trim();
-
-	if (trimmedValue.length === 0) {
-		throw new Error(`Manual match note ${fieldName} cannot be empty.`);
-	}
-
-	return trimmedValue;
 }
 
 async function rollbackCreatedTeamNotes(

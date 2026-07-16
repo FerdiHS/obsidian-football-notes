@@ -1,5 +1,12 @@
 import { normalizeMatchNotesFolder } from '../types';
 import type { ManualMatchNoteInput, MatchNoteDraft, MatchNoteInput } from '../types';
+import {
+	normalizeManualMatchDate,
+	normalizeRequiredManualMatchNoteField,
+	normalizeManualMatchNoteWikiLinkTarget,
+	normalizeOptionalManualMatchNoteSourceUrl,
+	type ManualMatchNoteValidationResult,
+} from './manual-match-note-input';
 import { toVaultRelativeNoteTarget } from './note-paths';
 
 const MATCH_NOTE_FRONTMATTER = {
@@ -38,26 +45,42 @@ export function createMatchNoteDraft(input: MatchNoteInput): MatchNoteDraft {
 
 export function createManualMatchNoteDraft(input: ManualMatchNoteInput): MatchNoteDraft {
 	const destinationFolder = normalizeMatchNotesFolder(input.destinationFolder);
-	const homeTeam = normalizeManualMatchNoteField(input.homeTeam, 'home team');
-	const awayTeam = normalizeManualMatchNoteField(input.awayTeam, 'away team');
-	const matchDate = normalizeManualMatchNoteField(input.matchDate, 'match date');
-	const competition = normalizeManualMatchNoteField(input.competition, 'competition');
-	const sourceUrl = normalizeOptionalMatchNoteSourceUrl(input.source?.sourceUrl);
+	const homeTeam = requireManualMatchNoteValue(
+		normalizeRequiredManualMatchNoteField(input.homeTeam, 'home team'),
+	);
+	const awayTeam = requireManualMatchNoteValue(
+		normalizeRequiredManualMatchNoteField(input.awayTeam, 'away team'),
+	);
+	const matchDate = requireManualMatchNoteValue(normalizeManualMatchDate(input.matchDate));
+	const competition = requireManualMatchNoteValue(
+		normalizeRequiredManualMatchNoteField(input.competition, 'competition'),
+	);
+	requireManualMatchNoteValue(normalizeManualMatchNoteWikiLinkTarget(homeTeam, 'home team'));
+	requireManualMatchNoteValue(normalizeManualMatchNoteWikiLinkTarget(awayTeam, 'away team'));
+	const homeTeamNotePath = normalizeManualMatchNotePath(
+		input.homeTeamNotePath,
+		'home team note path',
+	);
+	const awayTeamNotePath = normalizeManualMatchNotePath(
+		input.awayTeamNotePath,
+		'away team note path',
+	);
+	const sourceUrl = normalizeOptionalManualMatchNoteSourceUrl(input.source?.sourceUrl);
 	const title = `${homeTeam} vs ${awayTeam} ${matchDate}`;
 
 	return {
 		title,
 		folder: destinationFolder,
 		content: buildMatchNoteMarkdown({
+			homeTeamNotePath,
+			awayTeamNotePath,
 			snapshotLines: buildManualMatchSnapshotLines({
 				competition,
-				homeTeamNotePath: toVaultRelativeNoteTarget(input.homeTeamNotePath),
+				homeTeamNotePath,
 				matchDate,
-				awayTeamNotePath: toVaultRelativeNoteTarget(input.awayTeamNotePath),
+				awayTeamNotePath,
 				sourceUrl,
 			}),
-			homeTeamNotePath: toVaultRelativeNoteTarget(input.homeTeamNotePath),
-			awayTeamNotePath: toVaultRelativeNoteTarget(input.awayTeamNotePath),
 			sourceUrl,
 		}),
 	};
@@ -132,22 +155,28 @@ function buildManualMatchSnapshotLines(input: {
 	return lines;
 }
 
-function formatWikiLink(value: string): string {
-	return `[[${value}]]`;
+function formatWikiLink(notePath: string): string {
+	return `[[${escapeWikiLinkTarget(toVaultRelativeNoteTarget(notePath))}]]`;
 }
 
-function normalizeManualMatchNoteField(value: string, fieldName: string): string {
-	const trimmedValue = value.trim();
+function escapeWikiLinkTarget(value: string): string {
+	return value.replace(/([\\[\]|#^])/g, '\\$1');
+}
 
-	if (trimmedValue.length === 0) {
+function normalizeManualMatchNotePath(value: string, fieldName: string): string {
+	const normalizedPath = toVaultRelativeNoteTarget(value);
+
+	if (normalizedPath.length === 0) {
 		throw new Error(`Manual match note ${fieldName} cannot be empty.`);
 	}
 
-	return trimmedValue;
+	return normalizedPath;
 }
 
-function normalizeOptionalMatchNoteSourceUrl(value: string | undefined): string | undefined {
-	const trimmedValue = value?.trim();
+function requireManualMatchNoteValue<T>(result: ManualMatchNoteValidationResult<T>): T {
+	if (!result.ok) {
+		throw new Error(result.error.message);
+	}
 
-	return trimmedValue !== undefined && trimmedValue.length > 0 ? trimmedValue : undefined;
+	return result.value;
 }
