@@ -36,6 +36,18 @@ export async function createNoteFileFromDraft(
 	);
 }
 
+export async function createExactNoteFileFromDraft(
+	vault: Vault,
+	draft: NoteDraft,
+	options: NoteFileCreationOptions = {},
+): Promise<TFile> {
+	const noteLabel = options.noteLabel ?? 'note';
+
+	await ensureFolderExists(vault, draft.folder, noteLabel);
+
+	return await vault.create(createNamedNotePath(draft.folder, draft.title), draft.content);
+}
+
 async function createNoteFileWithRetry(
 	vault: Vault,
 	folder: string,

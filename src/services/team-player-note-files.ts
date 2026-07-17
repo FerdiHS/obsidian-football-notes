@@ -1,7 +1,7 @@
 import type { TAbstractFile, TFile, Vault } from 'obsidian';
 
 import type { PlayerNoteInput, TeamNoteInput } from '../types';
-import { createNoteFileFromDraft } from './note-files';
+import { createExactNoteFileFromDraft } from './note-files';
 import { createNamedNotePath } from './note-paths';
 import { createPlayerNoteDraft, createTeamNoteDraft } from './team-player-note-template';
 import type { NamedNoteCreationResult } from './team-player-note-workflow';
@@ -11,7 +11,9 @@ export async function createTeamNoteFile(
 	input: TeamNoteInput,
 ): Promise<NamedNoteCreationResult<TFile>> {
 	const draft = createTeamNoteDraft(input);
-	const existingFile = await getExistingTeamNoteFile(vault, draft.folder, draft.title);
+	const expectedTeamName = input.name.trim();
+	const exactPath = createNamedNotePath(draft.folder, draft.title);
+	const existingFile = await getExistingTeamNoteFile(vault, exactPath, expectedTeamName);
 
 	if (existingFile !== null) {
 		return {
@@ -20,14 +22,31 @@ export async function createTeamNoteFile(
 		};
 	}
 
-	const createdFile = await createNoteFileFromDraft(vault, draft, {
-		noteLabel: 'team note',
-	});
+	try {
+		const createdFile = await createExactNoteFileFromDraft(vault, draft, {
+			noteLabel: 'team note',
+		});
 
-	return {
-		file: createdFile,
-		existedAlready: false,
-	};
+		return {
+			file: createdFile,
+			existedAlready: false,
+		};
+	} catch (error) {
+		if (!isAlreadyExistsError(error)) {
+			throw error;
+		}
+
+		const existingAfterRace = await getExistingTeamNoteFile(vault, exactPath, expectedTeamName);
+
+		if (existingAfterRace !== null) {
+			return {
+				file: existingAfterRace,
+				existedAlready: true,
+			};
+		}
+
+		throw createExistingNamedNoteCollisionError(exactPath, 'team');
+	}
 }
 
 export async function createPlayerNoteFile(
@@ -35,7 +54,9 @@ export async function createPlayerNoteFile(
 	input: PlayerNoteInput,
 ): Promise<NamedNoteCreationResult<TFile>> {
 	const draft = createPlayerNoteDraft(input);
-	const existingFile = await getExistingPlayerNoteFile(vault, draft.folder, draft.title);
+	const expectedPlayerName = input.name.trim();
+	const exactPath = createNamedNotePath(draft.folder, draft.title);
+	const existingFile = await getExistingPlayerNoteFile(vault, exactPath, expectedPlayerName);
 
 	if (existingFile !== null) {
 		return {
@@ -44,86 +65,162 @@ export async function createPlayerNoteFile(
 		};
 	}
 
-	const createdFile = await createNoteFileFromDraft(vault, draft, {
-		noteLabel: 'player note',
-	});
+	try {
+		const createdFile = await createExactNoteFileFromDraft(vault, draft, {
+			noteLabel: 'player note',
+		});
 
-	return {
-		file: createdFile,
-		existedAlready: false,
-	};
-}
+		return {
+			file: createdFile,
+			existedAlready: false,
+		};
+	} catch (error) {
+		if (!isAlreadyExistsError(error)) {
+			throw error;
+		}
 
-async function getExistingPlayerNoteFile(
-	vault: Vault,
-	folder: string,
-	title: string,
-): Promise<TFile | null> {
-	const exactPath = createNamedNotePath(folder, title);
-	const existingFile = vault.getAbstractFileByPath(exactPath);
-
-	if (!isTFileLike(existingFile)) {
-		return null;
-	}
-
-	if (!(await isPlayerNoteFile(vault, existingFile))) {
-		throw new Error(
-			`Cannot create player note because "${exactPath}" already exists as a non-player file.`,
+		const existingAfterRace = await getExistingPlayerNoteFile(
+			vault,
+			exactPath,
+			expectedPlayerName,
 		);
-	}
 
-	return existingFile;
+		if (existingAfterRace !== null) {
+			return {
+				file: existingAfterRace,
+				existedAlready: true,
+			};
+		}
+
+		throw createExistingNamedNoteCollisionError(exactPath, 'player');
+	}
 }
 
 async function getExistingTeamNoteFile(
 	vault: Vault,
-	folder: string,
-	title: string,
+	exactPath: string,
+	expectedTeamName: string,
 ): Promise<TFile | null> {
-	const exactPath = createNamedNotePath(folder, title);
 	const existingFile = vault.getAbstractFileByPath(exactPath);
 
-	if (!isTFileLike(existingFile)) {
+	if (existingFile === null) {
 		return null;
 	}
 
-	if (!(await isTeamNoteFile(vault, existingFile))) {
-		throw new Error(
-			`Cannot create team note because "${exactPath}" already exists as a non-team file.`,
-		);
+	if (!isTFileLike(existingFile)) {
+		throw createExistingNamedNoteFolderError(exactPath, 'team');
 	}
 
-	return existingFile;
+	switch (await validateTeamNoteFile(vault, existingFile, expectedTeamName)) {
+		case 'match':
+			return existingFile;
+		case 'mismatch':
+			throw createExistingNamedNoteCollisionError(exactPath, 'team');
+		default:
+			throw createExistingNamedNoteTypeError(exactPath, 'team');
+	}
 }
 
-async function isTeamNoteFile(vault: Vault, file: TFile): Promise<boolean> {
+async function getExistingPlayerNoteFile(
+	vault: Vault,
+	exactPath: string,
+	expectedPlayerName: string,
+): Promise<TFile | null> {
+	const existingFile = vault.getAbstractFileByPath(exactPath);
+
+	if (existingFile === null) {
+		return null;
+	}
+
+	if (!isTFileLike(existingFile)) {
+		throw createExistingNamedNoteFolderError(exactPath, 'player');
+	}
+
+	switch (await validatePlayerNoteFile(vault, existingFile, expectedPlayerName)) {
+		case 'match':
+			return existingFile;
+		case 'mismatch':
+			throw createExistingNamedNoteCollisionError(exactPath, 'player');
+		default:
+			throw createExistingNamedNoteTypeError(exactPath, 'player');
+	}
+}
+
+type NamedNoteValidationResult = 'match' | 'mismatch' | 'unsupported';
+
+async function validateTeamNoteFile(
+	vault: Vault,
+	file: TFile,
+	expectedTeamName: string,
+): Promise<NamedNoteValidationResult> {
 	const content = await vault.read(file);
 	const frontmatter = extractFrontmatterLines(content);
 
 	if (frontmatter === null) {
-		return false;
+		return 'unsupported';
 	}
 
 	const type = getFrontmatterValue(frontmatter, 'type');
 	const sport = getFrontmatterValue(frontmatter, 'sport');
 	const teamName = getFrontmatterValue(frontmatter, 'team_name');
 
-	return type === 'team-note' && sport === 'football' && teamName.length > 0;
+	if (!isSupportedTeamNoteType(type) || sport !== 'football' || teamName.length === 0) {
+		return 'unsupported';
+	}
+
+	return teamName === expectedTeamName ? 'match' : 'mismatch';
 }
 
-async function isPlayerNoteFile(vault: Vault, file: TFile): Promise<boolean> {
+async function validatePlayerNoteFile(
+	vault: Vault,
+	file: TFile,
+	expectedPlayerName: string,
+): Promise<NamedNoteValidationResult> {
 	const content = await vault.read(file);
 	const frontmatter = extractFrontmatterLines(content);
 
 	if (frontmatter === null) {
-		return false;
+		return 'unsupported';
 	}
 
 	const type = getFrontmatterValue(frontmatter, 'type');
 	const sport = getFrontmatterValue(frontmatter, 'sport');
 	const playerName = getFrontmatterValue(frontmatter, 'player_name');
 
-	return type === 'player-note' && sport === 'football' && playerName.length > 0;
+	if (!isSupportedPlayerNoteType(type) || sport !== 'football' || playerName.length === 0) {
+		return 'unsupported';
+	}
+
+	return playerName === expectedPlayerName ? 'match' : 'mismatch';
+}
+
+function isSupportedTeamNoteType(value: string): boolean {
+	return value === 'team' || value === 'team-note';
+}
+
+function isSupportedPlayerNoteType(value: string): boolean {
+	return value === 'player' || value === 'player-note';
+}
+
+function createExistingNamedNoteTypeError(exactPath: string, noteKind: 'team' | 'player'): Error {
+	return new Error(
+		`Cannot create ${noteKind} note because "${exactPath}" already exists as a non-${noteKind} file.`,
+	);
+}
+
+function createExistingNamedNoteCollisionError(
+	exactPath: string,
+	noteKind: 'team' | 'player',
+): Error {
+	return new Error(
+		`Cannot create ${noteKind} note because "${exactPath}" already exists for a different ${noteKind} note.`,
+	);
+}
+
+function createExistingNamedNoteFolderError(exactPath: string, noteKind: 'team' | 'player'): Error {
+	return new Error(
+		`Cannot create ${noteKind} note because "${exactPath}" already exists as a folder.`,
+	);
 }
 
 function extractFrontmatterLines(content: string): string[] | null {
@@ -172,6 +269,10 @@ function getFrontmatterValue(frontmatter: string[], key: string): string {
 	}
 
 	return rawValue;
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+	return error instanceof Error && error.message.toLowerCase().includes('already exists');
 }
 
 function isTFileLike(value: TAbstractFile | null): value is TFile {
