@@ -50,19 +50,11 @@ void test('resolveManualMatchTeamNotes resolves home and away team notes', async
 			notePath: 'Football notes/teams/Real Madrid',
 			existedAlready: false,
 			fileName: 'Real Madrid.md',
-			file: {
-				path: 'Football notes/teams/Real Madrid.md',
-				name: 'Real Madrid.md',
-			},
 		},
 		awayTeam: {
 			notePath: 'Football notes/teams/Barcelona',
 			existedAlready: true,
 			fileName: 'Barcelona.md',
-			file: {
-				path: 'Football notes/teams/Barcelona.md',
-				name: 'Barcelona.md',
-			},
 		},
 	});
 });

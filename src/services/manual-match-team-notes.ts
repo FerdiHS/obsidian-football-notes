@@ -11,7 +11,6 @@ export interface ManualMatchTeamNoteResult {
 	notePath: string;
 	existedAlready: boolean;
 	fileName: string;
-	file: ManualMatchTeamNoteFileLike;
 }
 
 export interface ManualMatchTeamNoteResolution {
@@ -55,6 +54,5 @@ async function resolveManualMatchTeamNote(
 		notePath: toVaultRelativeNoteTarget(createdResult.file.path),
 		existedAlready: createdResult.existedAlready,
 		fileName: createdResult.file.name,
-		file: createdResult.file,
 	};
 }

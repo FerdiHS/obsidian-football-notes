@@ -154,15 +154,15 @@ async function validateTeamNoteFile(
 	expectedTeamName: string,
 ): Promise<NamedNoteValidationResult> {
 	const content = await vault.read(file);
-	const frontmatter = extractFrontmatterLines(content);
+	const frontmatter = parseFrontmatter(content);
 
 	if (frontmatter === null) {
 		return 'unsupported';
 	}
 
-	const type = getFrontmatterValue(frontmatter, 'type');
-	const sport = getFrontmatterValue(frontmatter, 'sport');
-	const teamName = getFrontmatterValue(frontmatter, 'team_name');
+	const type = getFrontmatterString(frontmatter, 'type');
+	const sport = getFrontmatterString(frontmatter, 'sport');
+	const teamName = getFrontmatterString(frontmatter, 'team_name');
 
 	if (!isSupportedTeamNoteType(type) || sport !== 'football' || teamName.length === 0) {
 		return 'unsupported';
@@ -177,15 +177,15 @@ async function validatePlayerNoteFile(
 	expectedPlayerName: string,
 ): Promise<NamedNoteValidationResult> {
 	const content = await vault.read(file);
-	const frontmatter = extractFrontmatterLines(content);
+	const frontmatter = parseFrontmatter(content);
 
 	if (frontmatter === null) {
 		return 'unsupported';
 	}
 
-	const type = getFrontmatterValue(frontmatter, 'type');
-	const sport = getFrontmatterValue(frontmatter, 'sport');
-	const playerName = getFrontmatterValue(frontmatter, 'player_name');
+	const type = getFrontmatterString(frontmatter, 'type');
+	const sport = getFrontmatterString(frontmatter, 'sport');
+	const playerName = getFrontmatterString(frontmatter, 'player_name');
 
 	if (!isSupportedPlayerNoteType(type) || sport !== 'football' || playerName.length === 0) {
 		return 'unsupported';
@@ -223,47 +223,71 @@ function createExistingNamedNoteFolderError(exactPath: string, noteKind: 'team' 
 	);
 }
 
-function extractFrontmatterLines(content: string): string[] | null {
+function parseFrontmatter(content: string): Record<string, string> | null {
 	const normalizedContent = content.replace(/\r\n/g, '\n');
 
 	if (!normalizedContent.startsWith('---\n')) {
 		return null;
 	}
 
-	const frontmatterEndIndex = normalizedContent.indexOf('\n---', 4);
+	for (let lineStartIndex = 4; lineStartIndex <= normalizedContent.length; ) {
+		const lineEndIndex = normalizedContent.indexOf('\n', lineStartIndex);
+		const line = normalizedContent.slice(
+			lineStartIndex,
+			lineEndIndex === -1 ? normalizedContent.length : lineEndIndex,
+		);
 
-	if (frontmatterEndIndex === -1) {
-		return null;
+		if (line === '---') {
+			return parseFrontmatterLines(normalizedContent.slice(4, lineStartIndex - 1));
+		}
+
+		if (lineEndIndex === -1) {
+			return null;
+		}
+
+		lineStartIndex = lineEndIndex + 1;
 	}
 
-	const closingMarkerEndIndex = frontmatterEndIndex + '\n---'.length;
-
-	if (
-		closingMarkerEndIndex < normalizedContent.length &&
-		normalizedContent[closingMarkerEndIndex] !== '\n'
-	) {
-		return null;
-	}
-
-	return normalizedContent
-		.slice(4, frontmatterEndIndex)
-		.split('\n')
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
+	return null;
 }
 
-function getFrontmatterValue(frontmatter: string[], key: string): string {
-	const entry = frontmatter.find((line) => line.startsWith(`${key}:`));
+function parseFrontmatterLines(frontmatter: string): Record<string, string> | null {
+	const parsedFrontmatter: Record<string, string> = {};
 
-	if (entry === undefined) {
+	for (const line of frontmatter.split('\n')) {
+		if (line.length === 0 || line.startsWith('#') || /^\s/.test(line)) {
+			continue;
+		}
+
+		const separatorIndex = line.indexOf(':');
+
+		if (separatorIndex <= 0) {
+			continue;
+		}
+
+		const key = line.slice(0, separatorIndex).trim();
+		const rawValue = line.slice(separatorIndex + 1);
+
+		if (key.length === 0) {
+			continue;
+		}
+
+		parsedFrontmatter[key] = parseFrontmatterScalar(rawValue);
+	}
+
+	return Object.keys(parsedFrontmatter).length > 0 ? parsedFrontmatter : null;
+}
+
+function parseFrontmatterScalar(rawValue: string): string {
+	const unquotedValue = stripYamlInlineComment(rawValue).trim();
+
+	if (unquotedValue.length === 0) {
 		return '';
 	}
 
-	const rawValue = entry.slice(key.length + 1).trim();
-
-	if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
+	if (unquotedValue.startsWith('"') && unquotedValue.endsWith('"')) {
 		try {
-			const parsedValue: unknown = JSON.parse(rawValue);
+			const parsedValue: unknown = JSON.parse(unquotedValue);
 
 			return typeof parsedValue === 'string' ? parsedValue : '';
 		} catch {
@@ -271,11 +295,53 @@ function getFrontmatterValue(frontmatter: string[], key: string): string {
 		}
 	}
 
-	if (rawValue.startsWith("'") && rawValue.endsWith("'")) {
-		return rawValue.slice(1, -1);
+	if (unquotedValue.startsWith("'") && unquotedValue.endsWith("'")) {
+		return unquotedValue.slice(1, -1).replace(/''/g, "'");
 	}
 
-	return rawValue;
+	return unquotedValue;
+}
+
+function stripYamlInlineComment(value: string): string {
+	let isInSingleQuotes = false;
+	let isInDoubleQuotes = false;
+
+	for (let index = 0; index < value.length; index += 1) {
+		const character = value[index];
+		const previousCharacter = index > 0 ? value[index - 1] : undefined;
+
+		if (character === "'" && !isInDoubleQuotes) {
+			if (isInSingleQuotes && value[index + 1] === "'") {
+				index += 1;
+				continue;
+			}
+
+			isInSingleQuotes = !isInSingleQuotes;
+			continue;
+		}
+
+		if (character === '"' && !isInSingleQuotes && value[index - 1] !== '\\') {
+			isInDoubleQuotes = !isInDoubleQuotes;
+			continue;
+		}
+
+		if (
+			character === '#' &&
+			!isInSingleQuotes &&
+			!isInDoubleQuotes &&
+			(previousCharacter === undefined || /\s/.test(previousCharacter))
+		) {
+			return value.slice(0, index).trimEnd();
+		}
+	}
+
+	return value.trimEnd();
+}
+
+function getFrontmatterString(frontmatter: Record<string, string>, key: string): string {
+	const value = frontmatter[key];
+
+	return typeof value === 'string' ? value : '';
 }
 
 function isAlreadyExistsError(error: unknown): boolean {

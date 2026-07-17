@@ -15,6 +15,10 @@ export interface NoteFileCreationOptions {
 	noteLabel?: string;
 }
 
+export interface ExactNoteFileCreationOptions {
+	noteLabel?: string;
+}
+
 export type NotePathFactory = (folder: string, title: string, attempt?: number) => string;
 
 export async function createNoteFileFromDraft(
@@ -39,7 +43,7 @@ export async function createNoteFileFromDraft(
 export async function createExactNoteFileFromDraft(
 	vault: Vault,
 	draft: NoteDraft,
-	options: NoteFileCreationOptions = {},
+	options: ExactNoteFileCreationOptions = {},
 ): Promise<TFile> {
 	const noteLabel = options.noteLabel ?? 'note';
 

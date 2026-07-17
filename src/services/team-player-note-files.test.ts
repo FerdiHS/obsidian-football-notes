@@ -59,6 +59,30 @@ void test('createTeamNoteFile reuses the legacy team note schema', async () => {
 	assert.deepEqual(vault.createCalls, []);
 });
 
+void test('createTeamNoteFile reuses a team note with single-quoted escaped YAML values', async () => {
+	const vault = new FakeVault();
+	vault.seedFile(
+		"Football notes/teams/Queen's Park.md",
+		[
+			'---',
+			'type: team-note',
+			'sport: football',
+			"team_name: 'Queen''s Park'",
+			'---',
+			'# Team Name',
+		].join('\n'),
+	);
+
+	const result = await createTeamNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/teams ',
+		name: "Queen's Park",
+	});
+
+	assert.equal(result.existedAlready, true);
+	assert.equal(result.file.path, "Football notes/teams/Queen's Park.md");
+	assert.deepEqual(vault.createCalls, []);
+});
+
 void test('createTeamNoteFile reuses notes with escaped quoted names on round trip', async () => {
 	const vault = new FakeVault();
 	const noteName = 'Javier "Chicharito" Hernández';
@@ -113,6 +137,32 @@ void test('createTeamNoteFile reuses a team note whose frontmatter ends at EOF',
 
 	assert.equal(result.existedAlready, true);
 	assert.equal(result.file.path, 'Football notes/teams/Real Madrid.md');
+	assert.deepEqual(vault.createCalls, []);
+});
+
+void test('createTeamNoteFile rejects nested frontmatter metadata instead of reusing it', async () => {
+	const vault = new FakeVault();
+	vault.seedFile(
+		'Football notes/teams/Real Madrid.md',
+		[
+			'---',
+			'metadata:',
+			'  type: team-note',
+			'  sport: football',
+			'  team_name: "Real Madrid"',
+			'---',
+			'# Team Name',
+		].join('\n'),
+	);
+
+	await assert.rejects(
+		createTeamNoteFile(vault as unknown as Vault, {
+			destinationFolder: ' Football notes/teams ',
+			name: ' Real Madrid ',
+		}),
+		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists as a non-team file\./,
+	);
+
 	assert.deepEqual(vault.createCalls, []);
 });
 

@@ -35,19 +35,11 @@ void test('createManualMatchNoteWorkflow creates and opens a manual match note',
 						notePath: 'Football notes/teams/Real Madrid',
 						existedAlready: false,
 						fileName: 'Real Madrid.md',
-						file: {
-							path: 'Football notes/teams/Real Madrid.md',
-							name: 'Real Madrid.md',
-						},
 					},
 					awayTeam: {
 						notePath: 'Football notes/teams/Barcelona',
 						existedAlready: true,
 						fileName: 'Barcelona.md',
-						file: {
-							path: 'Football notes/teams/Barcelona.md',
-							name: 'Barcelona.md',
-						},
 					},
 				};
 			},
@@ -316,19 +308,11 @@ void test('createManualMatchNoteWorkflow keeps created team notes when match not
 						notePath: 'Football notes/teams/Real Madrid',
 						existedAlready: false,
 						fileName: 'Real Madrid.md',
-						file: {
-							path: 'Football notes/teams/Real Madrid.md',
-							name: 'Real Madrid.md',
-						},
 					},
 					awayTeam: {
 						notePath: 'Football notes/teams/Barcelona',
 						existedAlready: true,
 						fileName: 'Barcelona.md',
-						file: {
-							path: 'Football notes/teams/Barcelona.md',
-							name: 'Barcelona.md',
-						},
 					},
 				};
 			},
@@ -375,19 +359,11 @@ void test('createManualMatchNoteWorkflow reports open failures after successful 
 						notePath: 'Football notes/teams/Real Madrid',
 						existedAlready: true,
 						fileName: 'Real Madrid.md',
-						file: {
-							path: 'Football notes/teams/Real Madrid.md',
-							name: 'Real Madrid.md',
-						},
 					},
 					awayTeam: {
 						notePath: 'Football notes/teams/Barcelona',
 						existedAlready: true,
 						fileName: 'Barcelona.md',
-						file: {
-							path: 'Football notes/teams/Barcelona.md',
-							name: 'Barcelona.md',
-						},
 					},
 				};
 			},
