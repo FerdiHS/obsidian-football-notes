@@ -261,10 +261,17 @@ function getFrontmatterValue(frontmatter: string[], key: string): string {
 
 	const rawValue = entry.slice(key.length + 1).trim();
 
-	if (
-		(rawValue.startsWith('"') && rawValue.endsWith('"')) ||
-		(rawValue.startsWith("'") && rawValue.endsWith("'"))
-	) {
+	if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
+		try {
+			const parsedValue: unknown = JSON.parse(rawValue);
+
+			return typeof parsedValue === 'string' ? parsedValue : '';
+		} catch {
+			return '';
+		}
+	}
+
+	if (rawValue.startsWith("'") && rawValue.endsWith("'")) {
 		return rawValue.slice(1, -1);
 	}
 

@@ -150,3 +150,52 @@ void test('resolveManualMatchTeamNotes rolls back a created home team note if aw
 	assert.deepEqual(createCalls, ['Real Madrid', 'Barcelona']);
 	assert.deepEqual(cleanupCalls, ['Football notes/teams/Real Madrid.md']);
 });
+
+void test('resolveManualMatchTeamNotes warns when rollback cleanup fails after away creation failure', async () => {
+	const notices: string[] = [];
+	const errors: string[] = [];
+
+	await assert.rejects(
+		resolveManualMatchTeamNotes(
+			{
+				homeTeam: 'Real Madrid',
+				awayTeam: 'Barcelona',
+			},
+			{
+				teamNotesFolder: 'Football notes/teams',
+				createTeamNoteFile: async (input) => {
+					if (input.name === 'Real Madrid') {
+						return {
+							file: {
+								path: 'Football notes/teams/Real Madrid.md',
+								name: 'Real Madrid.md',
+							},
+							existedAlready: false,
+						};
+					}
+
+					throw new Error(
+						'Cannot create team note because "Football notes/teams/Barcelona.md" already exists as a non-team file.',
+					);
+				},
+				deleteTeamNoteFile: async () => {
+					throw new Error('trash failed');
+				},
+				logError: (message, error) => {
+					errors.push(`${message}: ${(error as Error).message}`);
+				},
+				showNotice: (message) => {
+					notices.push(message);
+				},
+			},
+		),
+		/Cannot create team note because "Football notes\/teams\/Barcelona\.md" already exists as a non-team file\./,
+	);
+
+	assert.deepEqual(errors, [
+		'Failed to roll back created home team note after away team note resolution failed.: trash failed',
+	]);
+	assert.deepEqual(notices, [
+		'Could not remove created home team note: Real Madrid.md. Please review it manually.',
+	]);
+});

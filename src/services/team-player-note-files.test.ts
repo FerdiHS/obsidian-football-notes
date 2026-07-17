@@ -59,6 +59,26 @@ void test('createTeamNoteFile reuses the legacy team note schema', async () => {
 	assert.deepEqual(vault.createCalls, []);
 });
 
+void test('createTeamNoteFile reuses notes with escaped quoted names on round trip', async () => {
+	const vault = new FakeVault();
+	const noteName = 'Javier "Chicharito" Hernández';
+
+	const firstResult = await createTeamNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/teams ',
+		name: noteName,
+	});
+
+	const secondResult = await createTeamNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/teams ',
+		name: noteName,
+	});
+
+	assert.equal(firstResult.existedAlready, false);
+	assert.equal(secondResult.existedAlready, true);
+	assert.strictEqual(secondResult.file, firstResult.file);
+	assert.equal(vault.createCalls.length, 1);
+});
+
 void test('createTeamNoteFile rejects a non-team file that blocks the target path', async () => {
 	const vault = new FakeVault();
 	vault.seedFile('Football notes/teams/Real Madrid.md', '# Not a team note');
@@ -185,6 +205,26 @@ void test('createPlayerNoteFile reuses the legacy player note schema', async () 
 	assert.equal(result.existedAlready, true);
 	assert.equal(result.file.path, 'Football notes/players/Lamine Yamal.md');
 	assert.deepEqual(vault.createCalls, []);
+});
+
+void test('createPlayerNoteFile reuses notes with escaped quoted names on round trip', async () => {
+	const vault = new FakeVault();
+	const noteName = 'Javier "Chicharito" Hernández';
+
+	const firstResult = await createPlayerNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/players ',
+		name: noteName,
+	});
+
+	const secondResult = await createPlayerNoteFile(vault as unknown as Vault, {
+		destinationFolder: ' Football notes/players ',
+		name: noteName,
+	});
+
+	assert.equal(firstResult.existedAlready, false);
+	assert.equal(secondResult.existedAlready, true);
+	assert.strictEqual(secondResult.file, firstResult.file);
+	assert.equal(vault.createCalls.length, 1);
 });
 
 void test('createPlayerNoteFile returns the existing player note instead of duplicating it', async () => {

@@ -66,6 +66,7 @@ export function registerCreateMatchNoteManuallyCommand(
 									createTeamNoteFile: (noteInput) =>
 										createTeamNoteFile(plugin.app.vault, noteInput),
 									deleteTeamNoteFile: deleteTeamNoteFileFromVault(plugin.app),
+									showNotice,
 									logError,
 								},
 							);
