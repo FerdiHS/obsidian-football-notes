@@ -64,7 +64,6 @@ export function registerCreateMatchNoteManuallyCommand(
 									teamNotesFolder: plugin.settings.teamNotesFolder,
 									createTeamNoteFile: (noteInput) =>
 										createTeamNoteFile(plugin.app.vault, noteInput),
-									logError,
 								},
 							);
 						},

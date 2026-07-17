@@ -24,7 +24,6 @@ export interface ManualMatchTeamNoteResolverDependencies {
 	createTeamNoteFile: (
 		input: TeamNoteInput,
 	) => Promise<NamedNoteCreationResult<ManualMatchTeamNoteFileLike>>;
-	logError: (message: string, error: unknown) => void;
 }
 
 export async function resolveManualMatchTeamNotes(

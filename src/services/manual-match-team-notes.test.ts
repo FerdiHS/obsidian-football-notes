@@ -32,9 +32,6 @@ void test('resolveManualMatchTeamNotes resolves home and away team notes', async
 							existedAlready: true,
 						};
 			},
-			logError: () => {
-				throw new Error('should not be called');
-			},
 		},
 	);
 
@@ -88,9 +85,6 @@ void test('resolveManualMatchTeamNotes propagates team note creation failures', 
 						'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
 					);
 				},
-				logError: () => {
-					throw new Error('should not be called');
-				},
 			},
 		),
 		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists as a non-team file\./,
@@ -126,9 +120,6 @@ void test('resolveManualMatchTeamNotes leaves a created home team note in place 
 					throw new Error(
 						'Cannot create team note because "Football notes/teams/Barcelona.md" already exists as a non-team file.',
 					);
-				},
-				logError: () => {
-					throw new Error('should not be called');
 				},
 			},
 		),
