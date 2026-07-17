@@ -7,6 +7,7 @@ import {
 	normalizeManualMatchNoteWikiLinkTarget,
 	normalizeOptionalManualMatchNoteSourceUrl,
 } from './manual-match-note-input';
+import { formatKnownCreateErrorNotice } from './user-facing-error';
 import type { ManualMatchNoteInput, ManualMatchNoteSubmission } from '../types';
 
 export interface ManualMatchNoteWorkflowDependencies<
@@ -51,7 +52,11 @@ export async function createManualMatchNoteWorkflow<
 		} catch (error) {
 			dependencies.logError('Failed to resolve manual match team notes.', error);
 			dependencies.showNotice(
-				'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
+				formatKnownCreateErrorNotice(
+					error,
+					'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
+					'Could not resolve team notes',
+				),
 			);
 			return false;
 		}
@@ -74,7 +79,11 @@ export async function createManualMatchNoteWorkflow<
 		} catch (error) {
 			dependencies.logError('Failed to create manual match note.', error);
 			dependencies.showNotice(
-				'Could not create match note. Some team notes may have been created and left in the vault. See console for details.',
+				formatKnownCreateErrorNotice(
+					error,
+					'Could not create match note. Some team notes may have been created and left in the vault. See console for details.',
+					'Could not create match note',
+				),
 			);
 			return false;
 		}
@@ -100,7 +109,13 @@ export async function createManualMatchNoteWorkflow<
 		return true;
 	} catch (error) {
 		dependencies.logError('Failed to create manual match note.', error);
-		dependencies.showNotice('Could not create match note. See console for details.');
+		dependencies.showNotice(
+			formatKnownCreateErrorNotice(
+				error,
+				'Could not create match note. See console for details.',
+				'Could not create match note',
+			),
+		);
 		return false;
 	}
 }

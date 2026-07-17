@@ -285,7 +285,53 @@ void test('createManualMatchNoteWorkflow reports team note resolution failures',
 		],
 		[
 			'notice',
-			'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
+			'Could not resolve team notes: Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
+		],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow surfaces known team resolution collisions', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: 'Real Madrid',
+			awayTeam: 'Barcelona',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			resolveTeamNotes: async () => {
+				throw new Error(
+					'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
+				);
+			},
+			createMatchNoteFile: async () => {
+				throw new Error('should not be called');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
+	assert.deepEqual(calls, [
+		[
+			'error',
+			'Failed to resolve manual match team notes.',
+			'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
+		],
+		[
+			'notice',
+			'Could not resolve team notes: Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
 		],
 	]);
 });

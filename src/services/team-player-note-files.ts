@@ -1,3 +1,4 @@
+import { parse as parseYaml } from 'yaml';
 import type { TAbstractFile, TFile, Vault } from 'obsidian';
 
 import type { PlayerNoteInput, TeamNoteInput } from '../types';
@@ -223,7 +224,7 @@ function createExistingNamedNoteFolderError(exactPath: string, noteKind: 'team' 
 	);
 }
 
-function parseFrontmatter(content: string): Record<string, string> | null {
+function parseFrontmatter(content: string): Record<string, unknown> | null {
 	const normalizedContent = content.replace(/\r\n/g, '\n');
 
 	if (!normalizedContent.startsWith('---\n')) {
@@ -238,7 +239,7 @@ function parseFrontmatter(content: string): Record<string, string> | null {
 		);
 
 		if (line === '---') {
-			return parseFrontmatterLines(normalizedContent.slice(4, lineStartIndex - 1));
+			return parseYamlFrontmatter(normalizedContent.slice(4, lineStartIndex - 1));
 		}
 
 		if (lineEndIndex === -1) {
@@ -251,94 +252,19 @@ function parseFrontmatter(content: string): Record<string, string> | null {
 	return null;
 }
 
-function parseFrontmatterLines(frontmatter: string): Record<string, string> | null {
-	const parsedFrontmatter: Record<string, string> = {};
+function parseYamlFrontmatter(frontmatter: string): Record<string, unknown> | null {
+	let parsedFrontmatter: unknown;
 
-	for (const line of frontmatter.split('\n')) {
-		if (line.length === 0 || line.startsWith('#') || /^\s/.test(line)) {
-			continue;
-		}
-
-		const separatorIndex = line.indexOf(':');
-
-		if (separatorIndex <= 0) {
-			continue;
-		}
-
-		const key = line.slice(0, separatorIndex).trim();
-		const rawValue = line.slice(separatorIndex + 1);
-
-		if (key.length === 0) {
-			continue;
-		}
-
-		parsedFrontmatter[key] = parseFrontmatterScalar(rawValue);
+	try {
+		parsedFrontmatter = parseYaml(frontmatter);
+	} catch {
+		return null;
 	}
 
-	return Object.keys(parsedFrontmatter).length > 0 ? parsedFrontmatter : null;
+	return isRecord(parsedFrontmatter) ? parsedFrontmatter : null;
 }
 
-function parseFrontmatterScalar(rawValue: string): string {
-	const unquotedValue = stripYamlInlineComment(rawValue).trim();
-
-	if (unquotedValue.length === 0) {
-		return '';
-	}
-
-	if (unquotedValue.startsWith('"') && unquotedValue.endsWith('"')) {
-		try {
-			const parsedValue: unknown = JSON.parse(unquotedValue);
-
-			return typeof parsedValue === 'string' ? parsedValue : '';
-		} catch {
-			return '';
-		}
-	}
-
-	if (unquotedValue.startsWith("'") && unquotedValue.endsWith("'")) {
-		return unquotedValue.slice(1, -1).replace(/''/g, "'");
-	}
-
-	return unquotedValue;
-}
-
-function stripYamlInlineComment(value: string): string {
-	let isInSingleQuotes = false;
-	let isInDoubleQuotes = false;
-
-	for (let index = 0; index < value.length; index += 1) {
-		const character = value[index];
-		const previousCharacter = index > 0 ? value[index - 1] : undefined;
-
-		if (character === "'" && !isInDoubleQuotes) {
-			if (isInSingleQuotes && value[index + 1] === "'") {
-				index += 1;
-				continue;
-			}
-
-			isInSingleQuotes = !isInSingleQuotes;
-			continue;
-		}
-
-		if (character === '"' && !isInSingleQuotes && value[index - 1] !== '\\') {
-			isInDoubleQuotes = !isInDoubleQuotes;
-			continue;
-		}
-
-		if (
-			character === '#' &&
-			!isInSingleQuotes &&
-			!isInDoubleQuotes &&
-			(previousCharacter === undefined || /\s/.test(previousCharacter))
-		) {
-			return value.slice(0, index).trimEnd();
-		}
-	}
-
-	return value.trimEnd();
-}
-
-function getFrontmatterString(frontmatter: Record<string, string>, key: string): string {
+function getFrontmatterString(frontmatter: Record<string, unknown>, key: string): string {
 	const value = frontmatter[key];
 
 	return typeof value === 'string' ? value : '';
@@ -350,4 +276,8 @@ function isAlreadyExistsError(error: unknown): boolean {
 
 function isTFileLike(value: TAbstractFile | null): value is TFile {
 	return value !== null && !('children' in value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

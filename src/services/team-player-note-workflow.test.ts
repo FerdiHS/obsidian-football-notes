@@ -109,6 +109,42 @@ void test('createNamedNoteWorkflow reports create failures for player notes', as
 	]);
 });
 
+void test('createNamedNoteWorkflow surfaces known collision errors for team notes', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createNamedNoteWorkflow('Team Note', {
+		destinationFolder: 'Football notes/teams',
+		noteKind: 'team',
+		createNoteFile: async () => {
+			throw new Error(
+				'Cannot create team note because "Football notes/teams/Team Note.md" already exists for a different team note.',
+			);
+		},
+		openNote: async () => {
+			throw new Error('should not be called');
+		},
+		showNotice: (message) => {
+			calls.push(['notice', message]);
+		},
+		logError: (message, error) => {
+			calls.push(['error', message, (error as Error).message]);
+		},
+	});
+
+	assert.equal(result, false);
+	assert.deepEqual(calls, [
+		[
+			'error',
+			'Failed to create team note.',
+			'Cannot create team note because "Football notes/teams/Team Note.md" already exists for a different team note.',
+		],
+		[
+			'notice',
+			'Could not create team note: Cannot create team note because "Football notes/teams/Team Note.md" already exists for a different team note.',
+		],
+	]);
+});
+
 void test('createNamedNoteWorkflow reports open failures for team notes', async () => {
 	const calls: Array<unknown> = [];
 
