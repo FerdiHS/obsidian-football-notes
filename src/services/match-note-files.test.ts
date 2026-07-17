@@ -88,6 +88,8 @@ void test('createManualMatchNoteFile sanitizes the note title in the file path',
 		destinationFolder: 'Scratch/matches',
 		homeTeam: 'Foo/Bar',
 		awayTeam: 'Baz',
+		homeTeamNotePath: 'Football notes/teams/Foo-Bar',
+		awayTeamNotePath: 'Football notes/teams/Baz',
 		matchDate: '2026-06-20',
 		competition: 'Friendly',
 	};
@@ -100,7 +102,10 @@ void test('createManualMatchNoteFile sanitizes the note title in the file path',
 			createMatchNotePath('Scratch/matches', 'Foo/Bar vs Baz 2026-06-20', fixedDate, 1),
 		);
 		assert.deepEqual(vault.createFolderCalls, ['Scratch', 'Scratch/matches']);
-		assert.match(vault.createdContent, /- Home team: \[\[Foo-Bar\]\]/);
+		assert.match(vault.createdContent, /home_team_note: "Football notes\/teams\/Foo-Bar"/);
+		assert.match(vault.createdContent, /away_team_note: "Football notes\/teams\/Baz"/);
+		assert.match(vault.createdContent, /- Home team: \[\[Football notes\/teams\/Foo-Bar\]\]/);
+		assert.match(vault.createdContent, /- Away team: \[\[Football notes\/teams\/Baz\]\]/);
 	});
 });
 

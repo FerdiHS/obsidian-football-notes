@@ -52,6 +52,8 @@ export interface ManualMatchNoteInput {
 	destinationFolder: string;
 	homeTeam: string;
 	awayTeam: string;
+	homeTeamNotePath: string;
+	awayTeamNotePath: string;
 	matchDate: string;
 	competition: string;
 	source?: MatchUrl;
@@ -63,6 +65,16 @@ export interface ManualMatchNoteSubmission {
 	matchDate: string;
 	competition: string;
 	sourceUrl?: string;
+}
+
+export interface TeamNoteInput {
+	destinationFolder: string;
+	name: string;
+}
+
+export interface PlayerNoteInput {
+	destinationFolder: string;
+	name: string;
 }
 
 export interface MatchNoteDraft {

@@ -29,6 +29,7 @@ void test('registerCreateMatchNoteManuallyCommand wires the command entrypoint',
 		app: {} as never,
 		settings: {
 			notesFolder: 'Football notes/matches',
+			teamNotesFolder: 'Football notes/teams',
 		},
 	} as unknown as FootballNotesPlugin;
 
@@ -71,6 +72,7 @@ void test('registerCreateMatchNoteManuallyCommand submits the modal values throu
 		app: createTestApp(vault, openedFiles),
 		settings: {
 			notesFolder: 'Scratch/matches',
+			teamNotesFolder: 'Football notes/teams',
 		},
 	} as unknown as FootballNotesPlugin;
 
@@ -115,18 +117,39 @@ void test('registerCreateMatchNoteManuallyCommand submits the modal values throu
 		);
 
 		assert.equal(result, true);
-		assert.deepEqual(vault.createFolderCalls, ['Scratch', 'Scratch/matches']);
-		assert.equal(vault.createCalls.length, 1);
-		assert.equal(vault.createCalls[0]?.path, expectedPath);
-		assert.match(vault.createCalls[0]?.content ?? '', /- Home team: \[\[Foo-Bar\]\]/);
-		assert.match(vault.createCalls[0]?.content ?? '', /- Away team: \[\[Baz\]\]/);
+		assert.deepEqual(vault.createFolderCalls, [
+			'Football notes',
+			'Football notes/teams',
+			'Scratch',
+			'Scratch/matches',
+		]);
+		assert.deepEqual(
+			vault.createCalls.map((entry) => entry.path),
+			['Football notes/teams/Foo-Bar.md', 'Football notes/teams/Baz.md', expectedPath],
+		);
+		assert.match(vault.createCalls[0]?.content ?? '', /type: team-note/);
+		assert.match(vault.createCalls[0]?.content ?? '', /team_name: "Foo\/Bar"/);
+		assert.match(vault.createCalls[1]?.content ?? '', /type: team-note/);
+		assert.match(vault.createCalls[1]?.content ?? '', /team_name: "Baz"/);
 		assert.match(
-			vault.createCalls[0]?.content ?? '',
+			vault.createCalls[2]?.content ?? '',
+			/home_team_note: "Football notes\/teams\/Foo-Bar"/,
+		);
+		assert.match(
+			vault.createCalls[2]?.content ?? '',
+			/away_team_note: "Football notes\/teams\/Baz"/,
+		);
+		assert.match(
+			vault.createCalls[2]?.content ?? '',
 			/source_url: "https:\/\/example\.com\/match"/,
 		);
 		assert.match(
-			vault.createCalls[0]?.content ?? '',
-			/- Source URL: https:\/\/example\.com\/match/,
+			vault.createCalls[2]?.content ?? '',
+			/- Home team: \[\[Football notes\/teams\/Foo-Bar\]\]/,
+		);
+		assert.match(
+			vault.createCalls[2]?.content ?? '',
+			/- Away team: \[\[Football notes\/teams\/Baz\]\]/,
 		);
 		assert.deepEqual(openedFiles, [
 			{
@@ -135,6 +158,8 @@ void test('registerCreateMatchNoteManuallyCommand submits the modal values throu
 			},
 		]);
 		assert.deepEqual(notices, [
+			'Created home team note: Foo-Bar.md',
+			'Created away team note: Baz.md',
 			`Created match note: ${expectedPath.slice(expectedPath.lastIndexOf('/') + 1)}`,
 		]);
 	});
@@ -152,6 +177,7 @@ void test('registerCreateMatchNoteManuallyCommand reports modal setup failures',
 		app: {} as never,
 		settings: {
 			notesFolder: 'Football notes/matches',
+			teamNotesFolder: 'Football notes/teams',
 		},
 	} as unknown as FootballNotesPlugin;
 

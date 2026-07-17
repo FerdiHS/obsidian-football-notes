@@ -3,6 +3,9 @@ import type { App, TFile } from 'obsidian';
 import type FootballNotesPlugin from '../main';
 import { createManualMatchNoteFile } from '../services/match-note-files';
 import { createManualMatchNoteWorkflow } from '../services/manual-match-note';
+import { resolveManualMatchTeamNotes } from '../services/manual-match-team-notes';
+import type { ManualMatchTeamNoteResolution } from '../services/manual-match-team-notes';
+import { createTeamNoteFile } from '../services/team-player-note-files';
 import type { ManualMatchNoteInput, ManualMatchNoteSubmission } from '../types';
 import type { ManualMatchNoteSubmitHandler } from '../ui/manual-match-note-modal';
 
@@ -11,6 +14,10 @@ export const CREATE_MATCH_NOTE_MANUALLY_COMMAND_NAME = 'Create match note manual
 
 export interface CreateMatchNoteManuallyWorkflowDependencies {
 	destinationFolder: string;
+	resolveTeamNotes: (input: {
+		homeTeam: string;
+		awayTeam: string;
+	}) => Promise<ManualMatchTeamNoteResolution>;
 	createMatchNoteFile: (input: ManualMatchNoteInput) => Promise<TFile>;
 	openMatchNote: (file: TFile) => Promise<void>;
 	showNotice: (message: string) => void;
@@ -47,6 +54,19 @@ export function registerCreateMatchNoteManuallyCommand(
 				const createdModal = await modal(plugin.app, async (input) => {
 					return await createManualMatchNote(input, {
 						destinationFolder: plugin.settings.notesFolder,
+						resolveTeamNotes: async ({ homeTeam, awayTeam }) => {
+							return await resolveManualMatchTeamNotes(
+								{
+									homeTeam,
+									awayTeam,
+								},
+								{
+									teamNotesFolder: plugin.settings.teamNotesFolder,
+									createTeamNoteFile: (noteInput) =>
+										createTeamNoteFile(plugin.app.vault, noteInput),
+								},
+							);
+						},
 						createMatchNoteFile: (matchNoteInput) =>
 							createManualMatchNoteFile(plugin.app.vault, matchNoteInput),
 						openMatchNote: async (file) => {
@@ -102,6 +122,7 @@ export async function createManualMatchNote(
 ): Promise<boolean> {
 	return await createManualMatchNoteWorkflow(input, {
 		destinationFolder: dependencies.destinationFolder,
+		resolveTeamNotes: dependencies.resolveTeamNotes,
 		createMatchNoteFile: dependencies.createMatchNoteFile,
 		openMatchNote: dependencies.openMatchNote,
 		showNotice: dependencies.showNotice,

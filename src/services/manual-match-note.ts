@@ -1,17 +1,23 @@
 import { parseMatchUrl, type MatchUrlParseResult } from './match-url-parser';
 import type { MatchNoteCreatedFile } from './match-note-workflow';
+import type { ManualMatchTeamNoteResolution } from './manual-match-team-notes';
 import {
 	normalizeManualMatchDate,
 	normalizeRequiredManualMatchNoteField,
 	normalizeManualMatchNoteWikiLinkTarget,
 	normalizeOptionalManualMatchNoteSourceUrl,
 } from './manual-match-note-input';
+import { formatKnownCreateErrorNotice } from './user-facing-error';
 import type { ManualMatchNoteInput, ManualMatchNoteSubmission } from '../types';
 
 export interface ManualMatchNoteWorkflowDependencies<
 	TCreatedFile extends MatchNoteCreatedFile = MatchNoteCreatedFile,
 > {
 	destinationFolder: string;
+	resolveTeamNotes: (input: {
+		homeTeam: string;
+		awayTeam: string;
+	}) => Promise<ManualMatchTeamNoteResolution>;
 	createMatchNoteFile: (input: ManualMatchNoteInput) => Promise<TCreatedFile>;
 	openMatchNote: (file: TCreatedFile) => Promise<void>;
 	showNotice: (message: string) => void;
@@ -36,16 +42,58 @@ export async function createManualMatchNoteWorkflow<
 			return false;
 		}
 
-		const createdFile = await dependencies.createMatchNoteFile({
-			destinationFolder: dependencies.destinationFolder,
-			homeTeam: normalizedInput.value.homeTeam,
-			awayTeam: normalizedInput.value.awayTeam,
-			matchDate: normalizedInput.value.matchDate,
-			competition: normalizedInput.value.competition,
-			...(normalizedInput.value.source !== undefined
-				? { source: normalizedInput.value.source }
-				: {}),
-		});
+		let resolvedTeamNotes: ManualMatchTeamNoteResolution;
+
+		try {
+			resolvedTeamNotes = await dependencies.resolveTeamNotes({
+				homeTeam: normalizedInput.value.homeTeam,
+				awayTeam: normalizedInput.value.awayTeam,
+			});
+		} catch (error) {
+			dependencies.logError('Failed to resolve manual match team notes.', error);
+			dependencies.showNotice(
+				formatKnownCreateErrorNotice(
+					error,
+					'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
+					'Could not resolve team notes',
+				),
+			);
+			return false;
+		}
+
+		let createdFile: TCreatedFile;
+
+		try {
+			createdFile = await dependencies.createMatchNoteFile({
+				destinationFolder: dependencies.destinationFolder,
+				homeTeam: normalizedInput.value.homeTeam,
+				awayTeam: normalizedInput.value.awayTeam,
+				matchDate: normalizedInput.value.matchDate,
+				competition: normalizedInput.value.competition,
+				homeTeamNotePath: resolvedTeamNotes.homeTeam.notePath,
+				awayTeamNotePath: resolvedTeamNotes.awayTeam.notePath,
+				...(normalizedInput.value.source !== undefined
+					? { source: normalizedInput.value.source }
+					: {}),
+			});
+		} catch (error) {
+			dependencies.logError('Failed to create manual match note.', error);
+			dependencies.showNotice(
+				formatKnownCreateErrorNotice(
+					error,
+					'Could not create match note. Some team notes may have been created and left in the vault. See console for details.',
+					'Could not create match note',
+				),
+			);
+			return false;
+		}
+
+		dependencies.showNotice(
+			`${resolvedTeamNotes.homeTeam.existedAlready ? 'Reused existing' : 'Created'} home team note: ${resolvedTeamNotes.homeTeam.fileName}`,
+		);
+		dependencies.showNotice(
+			`${resolvedTeamNotes.awayTeam.existedAlready ? 'Reused existing' : 'Created'} away team note: ${resolvedTeamNotes.awayTeam.fileName}`,
+		);
 
 		try {
 			await dependencies.openMatchNote(createdFile);
@@ -61,7 +109,13 @@ export async function createManualMatchNoteWorkflow<
 		return true;
 	} catch (error) {
 		dependencies.logError('Failed to create manual match note.', error);
-		dependencies.showNotice('Could not create match note. See console for details.');
+		dependencies.showNotice(
+			formatKnownCreateErrorNotice(
+				error,
+				'Could not create match note. See console for details.',
+				'Could not create match note',
+			),
+		);
 		return false;
 	}
 }

@@ -75,6 +75,8 @@ void test('createManualMatchNoteDraft renders a source-free manual match note', 
 		destinationFolder: ' Football notes/matches ',
 		homeTeam: 'Real Madrid',
 		awayTeam: 'Barcelona',
+		homeTeamNotePath: 'Football notes/teams/Real Madrid',
+		awayTeamNotePath: 'Football notes/teams/Barcelona',
 		matchDate: '2026-07-01',
 		competition: 'La Liga',
 	});
@@ -84,15 +86,22 @@ void test('createManualMatchNoteDraft renders a source-free manual match note', 
 
 	const lines = draft.content.split('\n');
 
-	assert.deepEqual(lines.slice(0, 4), ['---', 'type: match-note', 'sport: football', '---']);
-	assert.deepEqual(lines.slice(4), [
+	assert.deepEqual(lines.slice(0, 6), [
+		'---',
+		'type: match-note',
+		'sport: football',
+		'home_team_note: "Football notes/teams/Real Madrid"',
+		'away_team_note: "Football notes/teams/Barcelona"',
+		'---',
+	]);
+	assert.deepEqual(lines.slice(6), [
 		'',
 		'# Match',
 		'',
 		'## Snapshot',
 		'',
-		'- Home team: [[Real Madrid]]',
-		'- Away team: [[Barcelona]]',
+		'- Home team: [[Football notes/teams/Real Madrid]]',
+		'- Away team: [[Football notes/teams/Barcelona]]',
 		'- Match date: 2026-07-01',
 		'- Competition: La Liga',
 		'',
@@ -114,6 +123,8 @@ void test('createManualMatchNoteDraft includes a provided source URL', () => {
 		destinationFolder: 'Football notes/matches',
 		homeTeam: 'Real Madrid',
 		awayTeam: 'Barcelona',
+		homeTeamNotePath: 'Football notes/teams/Real Madrid',
+		awayTeamNotePath: 'Football notes/teams/Barcelona',
 		matchDate: '2026-07-01',
 		competition: 'La Liga',
 		source: {
@@ -124,53 +135,48 @@ void test('createManualMatchNoteDraft includes a provided source URL', () => {
 
 	const lines = draft.content.split('\n');
 
-	assert.deepEqual(lines.slice(0, 5), [
+	assert.deepEqual(lines.slice(0, 7), [
 		'---',
 		'type: match-note',
 		'sport: football',
+		'home_team_note: "Football notes/teams/Real Madrid"',
+		'away_team_note: "Football notes/teams/Barcelona"',
 		'source_url: "https://example.com/match"',
 		'---',
 	]);
 	assert.ok(lines.includes('- Source URL: https://example.com/match'));
 });
 
-void test('createManualMatchNoteDraft sanitizes wiki link targets for special characters', () => {
+void test('createManualMatchNoteDraft preserves the provided team note paths', () => {
 	const draft = createManualMatchNoteDraft({
 		destinationFolder: 'Football notes/matches',
-		homeTeam: 'Foo/Bar',
+		homeTeam: 'Real Madrid',
+		awayTeam: 'Barcelona',
+		homeTeamNotePath: 'Football notes/teams/Real Madrid',
+		awayTeamNotePath: 'Football notes/teams/Barcelona',
+		matchDate: '2026-07-01',
+		competition: 'La Liga',
+	});
+
+	assert.match(draft.content, /home_team_note: "Football notes\/teams\/Real Madrid"/);
+	assert.match(draft.content, /away_team_note: "Football notes\/teams\/Barcelona"/);
+	assert.match(draft.content, /- Home team: \[\[Football notes\/teams\/Real Madrid\]\]/);
+	assert.match(draft.content, /- Away team: \[\[Football notes\/teams\/Barcelona\]\]/);
+});
+
+void test('createManualMatchNoteDraft escapes wiki link targets for special characters', () => {
+	const draft = createManualMatchNoteDraft({
+		destinationFolder: 'Football notes/matches',
+		homeTeam: 'Foo',
 		awayTeam: 'Baz',
+		homeTeamNotePath: 'Football notes/teams/Foo[Bar]',
+		awayTeamNotePath: 'Football notes/teams/Baz#Qux',
 		matchDate: '2026-07-01',
 		competition: 'Friendly',
 	});
 
-	assert.match(draft.content, /- Home team: \[\[Foo-Bar\]\]/);
-	assert.match(draft.content, /- Away team: \[\[Baz\]\]/);
-});
-
-void test('createManualMatchNoteDraft sanitizes wiki link targets for bracket characters', () => {
-	const draft = createManualMatchNoteDraft({
-		destinationFolder: 'Football notes/matches',
-		homeTeam: 'Foo]Bar',
-		awayTeam: 'Baz[Qux',
-		matchDate: '2026-07-01',
-		competition: 'Friendly',
-	});
-
-	assert.match(draft.content, /- Home team: \[\[Foo-Bar\]\]/);
-	assert.match(draft.content, /- Away team: \[\[Baz-Qux\]\]/);
-});
-
-void test('createManualMatchNoteDraft sanitizes wiki link targets for heading and block characters', () => {
-	const draft = createManualMatchNoteDraft({
-		destinationFolder: 'Football notes/matches',
-		homeTeam: 'Foo#Bar',
-		awayTeam: 'Baz^Qux',
-		matchDate: '2026-07-01',
-		competition: 'Friendly',
-	});
-
-	assert.match(draft.content, /- Home team: \[\[Foo-Bar\]\]/);
-	assert.match(draft.content, /- Away team: \[\[Baz-Qux\]\]/);
+	assert.ok(draft.content.includes('- Home team: [[Football notes/teams/Foo\\[Bar\\]]]'));
+	assert.ok(draft.content.includes('- Away team: [[Football notes/teams/Baz\\#Qux]]'));
 });
 
 void test('createManualMatchNoteDraft rejects empty manual fields', () => {
@@ -180,6 +186,8 @@ void test('createManualMatchNoteDraft rejects empty manual fields', () => {
 				destinationFolder: 'Football notes/matches',
 				homeTeam: 'Real Madrid',
 				awayTeam: ' ',
+				homeTeamNotePath: 'Football notes/teams/Real Madrid',
+				awayTeamNotePath: 'Football notes/teams/Barcelona',
 				matchDate: '2026-07-01',
 				competition: 'La Liga',
 			}),
@@ -194,6 +202,8 @@ void test('createManualMatchNoteDraft rejects invalid manual match dates', () =>
 				destinationFolder: 'Football notes/matches',
 				homeTeam: 'Real Madrid',
 				awayTeam: 'Barcelona',
+				homeTeamNotePath: 'Football notes/teams/Real Madrid',
+				awayTeamNotePath: 'Football notes/teams/Barcelona',
 				matchDate: '2026-02-31',
 				competition: 'La Liga',
 			}),
@@ -208,6 +218,8 @@ void test('createManualMatchNoteDraft rejects team names that normalize to empty
 				destinationFolder: 'Football notes/matches',
 				homeTeam: '.',
 				awayTeam: 'Barcelona',
+				homeTeamNotePath: 'Football notes/teams/Real Madrid',
+				awayTeamNotePath: 'Football notes/teams/Barcelona',
 				matchDate: '2026-07-01',
 				competition: 'La Liga',
 			}),

@@ -7,10 +7,13 @@ import {
 	normalizeOptionalManualMatchNoteSourceUrl,
 	type ManualMatchNoteValidationResult,
 } from './manual-match-note-input';
+import { toVaultRelativeNoteTarget } from './note-paths';
 
 const MATCH_NOTE_FRONTMATTER = {
 	type: 'match-note',
 	sport: 'football',
+	homeTeamNoteKey: 'home_team_note',
+	awayTeamNoteKey: 'away_team_note',
 	sourceUrlKey: 'source_url',
 } as const;
 
@@ -52,6 +55,16 @@ export function createManualMatchNoteDraft(input: ManualMatchNoteInput): MatchNo
 	const competition = requireManualMatchNoteValue(
 		normalizeRequiredManualMatchNoteField(input.competition, 'competition'),
 	);
+	requireManualMatchNoteValue(normalizeManualMatchNoteWikiLinkTarget(homeTeam, 'home team'));
+	requireManualMatchNoteValue(normalizeManualMatchNoteWikiLinkTarget(awayTeam, 'away team'));
+	const homeTeamNotePath = normalizeManualMatchNotePath(
+		input.homeTeamNotePath,
+		'home team note path',
+	);
+	const awayTeamNotePath = normalizeManualMatchNotePath(
+		input.awayTeamNotePath,
+		'away team note path',
+	);
 	const sourceUrl = normalizeOptionalManualMatchNoteSourceUrl(input.source?.sourceUrl);
 	const title = `${homeTeam} vs ${awayTeam} ${matchDate}`;
 
@@ -59,11 +72,13 @@ export function createManualMatchNoteDraft(input: ManualMatchNoteInput): MatchNo
 		title,
 		folder: destinationFolder,
 		content: buildMatchNoteMarkdown({
+			homeTeamNotePath,
+			awayTeamNotePath,
 			snapshotLines: buildManualMatchSnapshotLines({
 				competition,
-				homeTeam,
+				homeTeamNotePath,
 				matchDate,
-				awayTeam,
+				awayTeamNotePath,
 				sourceUrl,
 			}),
 			sourceUrl,
@@ -72,6 +87,8 @@ export function createManualMatchNoteDraft(input: ManualMatchNoteInput): MatchNo
 }
 
 function buildMatchNoteMarkdown(options: {
+	homeTeamNotePath?: string;
+	awayTeamNotePath?: string;
 	sourceUrl?: string;
 	snapshotLines?: readonly string[];
 }): string {
@@ -92,6 +109,18 @@ function buildMatchNoteMarkdown(options: {
 		`sport: ${MATCH_NOTE_FRONTMATTER.sport}`,
 	];
 
+	if (options.homeTeamNotePath !== undefined) {
+		frontmatter.push(
+			`${MATCH_NOTE_FRONTMATTER.homeTeamNoteKey}: ${formatFrontmatterString(options.homeTeamNotePath)}`,
+		);
+	}
+
+	if (options.awayTeamNotePath !== undefined) {
+		frontmatter.push(
+			`${MATCH_NOTE_FRONTMATTER.awayTeamNoteKey}: ${formatFrontmatterString(options.awayTeamNotePath)}`,
+		);
+	}
+
 	if (options.sourceUrl !== undefined) {
 		frontmatter.push(
 			`${MATCH_NOTE_FRONTMATTER.sourceUrlKey}: ${formatFrontmatterString(options.sourceUrl)}`,
@@ -107,14 +136,14 @@ function formatFrontmatterString(value: string): string {
 
 function buildManualMatchSnapshotLines(input: {
 	competition: string;
-	homeTeam: string;
+	homeTeamNotePath: string;
 	matchDate: string;
-	awayTeam: string;
+	awayTeamNotePath: string;
 	sourceUrl?: string;
 }): string[] {
 	const lines = [
-		`- Home team: ${formatWikiLink(input.homeTeam, 'home team')}`,
-		`- Away team: ${formatWikiLink(input.awayTeam, 'away team')}`,
+		`- Home team: ${formatWikiLink(input.homeTeamNotePath)}`,
+		`- Away team: ${formatWikiLink(input.awayTeamNotePath)}`,
 		`- Match date: ${input.matchDate}`,
 		`- Competition: ${input.competition}`,
 	];
@@ -126,12 +155,22 @@ function buildManualMatchSnapshotLines(input: {
 	return lines;
 }
 
-function formatWikiLink(value: string, fieldName: string): string {
-	const normalizedTarget = requireManualMatchNoteValue(
-		normalizeManualMatchNoteWikiLinkTarget(value, fieldName),
-	);
+function formatWikiLink(notePath: string): string {
+	return `[[${escapeWikiLinkTarget(toVaultRelativeNoteTarget(notePath))}]]`;
+}
 
-	return `[[${normalizedTarget}]]`;
+function escapeWikiLinkTarget(value: string): string {
+	return value.replace(/([\\[\]|#^])/g, '\\$1');
+}
+
+function normalizeManualMatchNotePath(value: string, fieldName: string): string {
+	const normalizedPath = toVaultRelativeNoteTarget(value);
+
+	if (normalizedPath.length === 0) {
+		throw new Error(`Manual match note ${fieldName} cannot be empty.`);
+	}
+
+	return normalizedPath;
 }
 
 function requireManualMatchNoteValue<T>(result: ManualMatchNoteValidationResult<T>): T {
