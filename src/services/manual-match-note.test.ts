@@ -51,9 +51,6 @@ void test('createManualMatchNoteWorkflow creates and opens a manual match note',
 					},
 				};
 			},
-			deleteTeamNoteFile: async () => {
-				throw new Error('should not be called');
-			},
 			createMatchNoteFile: async (input) => {
 				createdInputs.push({
 					destinationFolder: input.destinationFolder,
@@ -125,9 +122,6 @@ void test('createManualMatchNoteWorkflow shows the parser error for invalid opti
 			resolveTeamNotes: async () => {
 				throw new Error('should not be called');
 			},
-			deleteTeamNoteFile: async () => {
-				throw new Error('should not be called');
-			},
 			createMatchNoteFile: async () => {
 				throw new Error('should not be called');
 			},
@@ -164,9 +158,6 @@ void test('createManualMatchNoteWorkflow rejects empty manual fields', async () 
 			resolveTeamNotes: async () => {
 				throw new Error('should not be called');
 			},
-			deleteTeamNoteFile: async () => {
-				throw new Error('should not be called');
-			},
 			createMatchNoteFile: async () => {
 				throw new Error('should not be called');
 			},
@@ -199,9 +190,6 @@ void test('createManualMatchNoteWorkflow rejects invalid manual match dates', as
 		{
 			destinationFolder: 'Football notes/matches',
 			resolveTeamNotes: async () => {
-				throw new Error('should not be called');
-			},
-			deleteTeamNoteFile: async () => {
 				throw new Error('should not be called');
 			},
 			createMatchNoteFile: async () => {
@@ -243,9 +231,6 @@ void test('createManualMatchNoteWorkflow rejects match teams that normalize to e
 			resolveTeamNotes: async () => {
 				throw new Error('should not be called');
 			},
-			deleteTeamNoteFile: async () => {
-				throw new Error('should not be called');
-			},
 			createMatchNoteFile: async () => {
 				throw new Error('should not be called');
 			},
@@ -284,9 +269,6 @@ void test('createManualMatchNoteWorkflow reports team note resolution failures',
 					'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
 				);
 			},
-			deleteTeamNoteFile: async () => {
-				throw new Error('should not be called');
-			},
 			createMatchNoteFile: async () => {
 				throw new Error('should not be called');
 			},
@@ -309,13 +291,15 @@ void test('createManualMatchNoteWorkflow reports team note resolution failures',
 			'Failed to resolve manual match team notes.',
 			'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
 		],
-		['notice', 'Could not resolve team notes. See console for details.'],
+		[
+			'notice',
+			'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
+		],
 	]);
 });
 
-void test('createManualMatchNoteWorkflow rolls back created team notes when match note creation fails', async () => {
+void test('createManualMatchNoteWorkflow keeps created team notes when match note creation fails', async () => {
 	const calls: Array<unknown> = [];
-	const deletedTeamNotes: string[] = [];
 
 	const result = await createManualMatchNoteWorkflow(
 		{
@@ -348,9 +332,6 @@ void test('createManualMatchNoteWorkflow rolls back created team notes when matc
 					},
 				};
 			},
-			deleteTeamNoteFile: async (file) => {
-				deletedTeamNotes.push(file.path);
-			},
 			createMatchNoteFile: async () => {
 				throw new Error('match note create failed');
 			},
@@ -367,10 +348,12 @@ void test('createManualMatchNoteWorkflow rolls back created team notes when matc
 	);
 
 	assert.equal(result, false);
-	assert.deepEqual(deletedTeamNotes, ['Football notes/teams/Real Madrid.md']);
 	assert.deepEqual(calls, [
 		['error', 'Failed to create manual match note.', 'match note create failed'],
-		['notice', 'Could not create match note. See console for details.'],
+		[
+			'notice',
+			'Could not create match note. Some team notes may have been created and left in the vault. See console for details.',
+		],
 	]);
 });
 
@@ -407,9 +390,6 @@ void test('createManualMatchNoteWorkflow reports open failures after successful 
 						},
 					},
 				};
-			},
-			deleteTeamNoteFile: async () => {
-				throw new Error('should not be called');
 			},
 			createMatchNoteFile: async () => {
 				return {

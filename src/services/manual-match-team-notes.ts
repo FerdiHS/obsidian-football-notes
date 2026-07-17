@@ -24,9 +24,7 @@ export interface ManualMatchTeamNoteResolverDependencies {
 	createTeamNoteFile: (
 		input: TeamNoteInput,
 	) => Promise<NamedNoteCreationResult<ManualMatchTeamNoteFileLike>>;
-	deleteTeamNoteFile: (file: ManualMatchTeamNoteFileLike) => Promise<void>;
 	logError: (message: string, error: unknown) => void;
-	showNotice?: (message: string) => void;
 }
 
 export async function resolveManualMatchTeamNotes(
@@ -37,31 +35,12 @@ export async function resolveManualMatchTeamNotes(
 	dependencies: ManualMatchTeamNoteResolverDependencies,
 ): Promise<ManualMatchTeamNoteResolution> {
 	const homeTeam = await resolveManualMatchTeamNote(input.homeTeam, dependencies);
+	const awayTeam = await resolveManualMatchTeamNote(input.awayTeam, dependencies);
 
-	try {
-		const awayTeam = await resolveManualMatchTeamNote(input.awayTeam, dependencies);
-
-		return {
-			homeTeam,
-			awayTeam,
-		};
-	} catch (error) {
-		if (!homeTeam.existedAlready) {
-			try {
-				await dependencies.deleteTeamNoteFile(homeTeam.file);
-			} catch (cleanupError) {
-				dependencies.logError(
-					'Failed to roll back created home team note after away team note resolution failed.',
-					cleanupError,
-				);
-				dependencies.showNotice?.(
-					`Could not remove created home team note: ${homeTeam.fileName}. Please review it manually.`,
-				);
-			}
-		}
-
-		throw error;
-	}
+	return {
+		homeTeam,
+		awayTeam,
+	};
 }
 
 async function resolveManualMatchTeamNote(

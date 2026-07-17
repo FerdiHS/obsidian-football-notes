@@ -18,7 +18,6 @@ export interface CreateMatchNoteManuallyWorkflowDependencies {
 		homeTeam: string;
 		awayTeam: string;
 	}) => Promise<ManualMatchTeamNoteResolution>;
-	deleteTeamNoteFile: (file: { path: string; name: string }) => Promise<void>;
 	createMatchNoteFile: (input: ManualMatchNoteInput) => Promise<TFile>;
 	openMatchNote: (file: TFile) => Promise<void>;
 	showNotice: (message: string) => void;
@@ -65,15 +64,12 @@ export function registerCreateMatchNoteManuallyCommand(
 									teamNotesFolder: plugin.settings.teamNotesFolder,
 									createTeamNoteFile: (noteInput) =>
 										createTeamNoteFile(plugin.app.vault, noteInput),
-									deleteTeamNoteFile: deleteTeamNoteFileFromVault(plugin.app),
-									showNotice,
 									logError,
 								},
 							);
 						},
 						createMatchNoteFile: (matchNoteInput) =>
 							createManualMatchNoteFile(plugin.app.vault, matchNoteInput),
-						deleteTeamNoteFile: deleteTeamNoteFileFromVault(plugin.app),
 						openMatchNote: async (file) => {
 							await plugin.app.workspace.getLeaf(false).openFile(file);
 						},
@@ -128,22 +124,9 @@ export async function createManualMatchNote(
 	return await createManualMatchNoteWorkflow(input, {
 		destinationFolder: dependencies.destinationFolder,
 		resolveTeamNotes: dependencies.resolveTeamNotes,
-		deleteTeamNoteFile: dependencies.deleteTeamNoteFile,
 		createMatchNoteFile: dependencies.createMatchNoteFile,
 		openMatchNote: dependencies.openMatchNote,
 		showNotice: dependencies.showNotice,
 		logError: dependencies.logError,
 	});
-}
-
-function deleteTeamNoteFileFromVault(app: App) {
-	return async (file: { path: string; name: string }) => {
-		const abstractFile = app.vault.getAbstractFileByPath(file.path);
-
-		if (abstractFile === null || 'children' in abstractFile) {
-			return;
-		}
-
-		await app.fileManager.trashFile(abstractFile);
-	};
 }

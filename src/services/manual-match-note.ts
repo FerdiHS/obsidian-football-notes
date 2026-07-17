@@ -1,9 +1,6 @@
 import { parseMatchUrl, type MatchUrlParseResult } from './match-url-parser';
 import type { MatchNoteCreatedFile } from './match-note-workflow';
-import type {
-	ManualMatchTeamNoteFileLike,
-	ManualMatchTeamNoteResolution,
-} from './manual-match-team-notes';
+import type { ManualMatchTeamNoteResolution } from './manual-match-team-notes';
 import {
 	normalizeManualMatchDate,
 	normalizeRequiredManualMatchNoteField,
@@ -20,7 +17,6 @@ export interface ManualMatchNoteWorkflowDependencies<
 		homeTeam: string;
 		awayTeam: string;
 	}) => Promise<ManualMatchTeamNoteResolution>;
-	deleteTeamNoteFile: (file: ManualMatchTeamNoteFileLike) => Promise<void>;
 	createMatchNoteFile: (input: ManualMatchNoteInput) => Promise<TCreatedFile>;
 	openMatchNote: (file: TCreatedFile) => Promise<void>;
 	showNotice: (message: string) => void;
@@ -54,7 +50,9 @@ export async function createManualMatchNoteWorkflow<
 			});
 		} catch (error) {
 			dependencies.logError('Failed to resolve manual match team notes.', error);
-			dependencies.showNotice('Could not resolve team notes. See console for details.');
+			dependencies.showNotice(
+				'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
+			);
 			return false;
 		}
 
@@ -74,8 +72,11 @@ export async function createManualMatchNoteWorkflow<
 					: {}),
 			});
 		} catch (error) {
-			await rollbackCreatedTeamNotes(resolvedTeamNotes, dependencies);
-			throw error;
+			dependencies.logError('Failed to create manual match note.', error);
+			dependencies.showNotice(
+				'Could not create match note. Some team notes may have been created and left in the vault. See console for details.',
+			);
+			return false;
 		}
 
 		dependencies.showNotice(
@@ -189,27 +190,4 @@ function normalizeManualMatchNoteSubmission(
 			competition: competition.value,
 		},
 	};
-}
-
-async function rollbackCreatedTeamNotes(
-	resolvedTeamNotes: ManualMatchTeamNoteResolution,
-	dependencies: {
-		deleteTeamNoteFile: (file: ManualMatchTeamNoteFileLike) => Promise<void>;
-		logError: (message: string, error: unknown) => void;
-	},
-): Promise<void> {
-	for (const teamNote of [resolvedTeamNotes.homeTeam, resolvedTeamNotes.awayTeam]) {
-		if (teamNote.existedAlready) {
-			continue;
-		}
-
-		try {
-			await dependencies.deleteTeamNoteFile(teamNote.file);
-		} catch (error) {
-			dependencies.logError(
-				`Could not roll back created team note: ${teamNote.fileName}`,
-				error,
-			);
-		}
-	}
 }
