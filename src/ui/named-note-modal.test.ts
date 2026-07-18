@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises, no-undef */
-
 import { deepStrictEqual, strictEqual } from 'node:assert';
 import { setImmediate } from 'node:timers/promises';
 import { test } from 'node:test';
@@ -71,7 +69,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 	return { promise, resolve };
 }
 
-test('Enter submits the current input value', async () => {
+void test('Enter submits the current input value', async () => {
 	const values: string[] = [];
 	const modal = await openModal(async (value) => {
 		values.push(value);
@@ -86,7 +84,7 @@ test('Enter submits the current input value', async () => {
 	strictEqual(event.defaultPrevented, true);
 });
 
-test('Enter during IME composition does not submit or prevent the default action', async () => {
+void test('Enter during IME composition does not submit or prevent the default action', async () => {
 	let submissions = 0;
 	const modal = await openModal(async () => {
 		submissions++;
@@ -100,7 +98,7 @@ test('Enter during IME composition does not submit or prevent the default action
 	strictEqual(event.defaultPrevented, false);
 });
 
-test('non-Enter keys do not submit', async () => {
+void test('non-Enter keys do not submit', async () => {
 	let submissions = 0;
 	const modal = await openModal(async () => {
 		submissions++;
@@ -114,7 +112,7 @@ test('non-Enter keys do not submit', async () => {
 	strictEqual(event.defaultPrevented, false);
 });
 
-test('the keydown listener is removed when the modal closes', async () => {
+void test('the keydown listener is removed when the modal closes', async () => {
 	const modal = await openModal(async () => false);
 	strictEqual(modal.nameField.input.inputEl.listeners.get('keydown')?.size, 1);
 
@@ -123,7 +121,7 @@ test('the keydown listener is removed when the modal closes', async () => {
 	strictEqual(modal.nameField.input.inputEl.listeners.get('keydown')?.size, 0);
 });
 
-test('a second submission is ignored while the first submission is pending', async () => {
+void test('a second submission is ignored while the first submission is pending', async () => {
 	const pending = deferred<boolean>();
 	let submissions = 0;
 	const modal = await openModal(async () => {
@@ -139,7 +137,7 @@ test('a second submission is ignored while the first submission is pending', asy
 	await setImmediate();
 });
 
-test('submit and cancel controls are disabled while pending and restored afterward', async () => {
+void test('submit and cancel controls are disabled while pending and restored afterward', async () => {
 	const pending = deferred<boolean>();
 	const modal = await openModal(async () => pending.promise);
 
@@ -153,7 +151,7 @@ test('submit and cancel controls are disabled while pending and restored afterwa
 	strictEqual(modal.cancelButton.disabled, false);
 });
 
-test('closing is prevented while pending', async () => {
+void test('closing is prevented while pending', async () => {
 	const pending = deferred<boolean>();
 	const modal = await openModal(async () => pending.promise);
 
@@ -165,7 +163,7 @@ test('closing is prevented while pending', async () => {
 	await setImmediate();
 });
 
-test('controls restore when submission returns false and the modal remains open', async () => {
+void test('controls restore when submission returns false and the modal remains open', async () => {
 	const modal = await openModal(async () => false);
 
 	await modal.submit();
@@ -175,7 +173,7 @@ test('controls restore when submission returns false and the modal remains open'
 	strictEqual(modal.cancelButton.disabled, false);
 });
 
-test('controls restore and the exact error is preserved when submission throws', async () => {
+void test('controls restore and the exact error is preserved when submission throws', async () => {
 	const error = new Error('submission failed');
 	const modal = await openModal(async () => {
 		throw error;
@@ -193,7 +191,7 @@ test('controls restore and the exact error is preserved when submission throws',
 	strictEqual(modal.cancelButton.disabled, false);
 });
 
-test('the modal closes after true and remains open after false', async () => {
+void test('the modal closes after true and remains open after false', async () => {
 	const closes = await openModal(async () => true);
 	await closes.submit();
 	strictEqual(closes.closed, true);
@@ -203,7 +201,7 @@ test('the modal closes after true and remains open after false', async () => {
 	strictEqual(staysOpen.closed, false);
 });
 
-test('button and Enter submissions share the same pending guard', async () => {
+void test('button and Enter submissions share the same pending guard', async () => {
 	const pending = deferred<boolean>();
 	let submissions = 0;
 	const modal = await openModal(async () => {
