@@ -27,6 +27,7 @@ void test('registerNamedNoteCommand wires successful named-note creation', async
 	let capturedCommand: RegisteredCommand | undefined;
 	let capturedOnSubmit: NamedNoteSubmitHandler | undefined;
 	let createModalCalls = 0;
+	let openCalls = 0;
 	const createInputs: Array<{ destinationFolder: string; name: string }> = [];
 	const openedFiles: Array<{ name: string }> = [];
 	const notices: string[] = [];
@@ -61,7 +62,11 @@ void test('registerNamedNoteCommand wires successful named-note creation', async
 		createModal: (_app, _config, onSubmit) => {
 			createModalCalls += 1;
 			capturedOnSubmit = onSubmit;
-			return createOpenModal();
+			return {
+				open() {
+					openCalls += 1;
+				},
+			};
 		},
 		showNotice: (message) => {
 			notices.push(message);
@@ -79,6 +84,7 @@ void test('registerNamedNoteCommand wires successful named-note creation', async
 	await capturedCommand?.callback();
 
 	assert.equal(createModalCalls, 1);
+	assert.equal(openCalls, 1);
 	assert.equal(typeof capturedOnSubmit, 'function');
 
 	const result = await capturedOnSubmit?.(' Real Madrid ');
