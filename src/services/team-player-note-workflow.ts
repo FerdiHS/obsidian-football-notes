@@ -1,5 +1,5 @@
 import { sanitizeNoteTitle } from './note-title';
-import { formatKnownCreateErrorNotice } from './user-facing-error';
+import { formatUserFacingErrorNotice } from './user-facing-error';
 
 export interface NamedNoteCreatedFile {
 	name: string;
@@ -65,10 +65,9 @@ export async function createNamedNoteWorkflow<
 	} catch (error) {
 		dependencies.logError(`Failed to create ${dependencies.noteKind} note.`, error);
 		dependencies.showNotice(
-			formatKnownCreateErrorNotice(
+			formatUserFacingErrorNotice(
 				error,
 				`Could not create ${dependencies.noteKind} note. See console for details.`,
-				`Could not create ${dependencies.noteKind} note`,
 			),
 		);
 		return false;

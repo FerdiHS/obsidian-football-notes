@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createManualMatchNoteWorkflow } from './manual-match-note';
+import { UserFacingCreateError } from './user-facing-error';
 
 void test('createManualMatchNoteWorkflow creates and opens a manual match note', async () => {
 	const notices: string[] = [];
@@ -285,7 +286,7 @@ void test('createManualMatchNoteWorkflow reports team note resolution failures',
 		],
 		[
 			'notice',
-			'Could not resolve team notes: Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
+			'Could not resolve team notes. Some team notes may have been created and left in the vault. See console for details.',
 		],
 	]);
 });
@@ -303,7 +304,7 @@ void test('createManualMatchNoteWorkflow surfaces known team resolution collisio
 		{
 			destinationFolder: 'Football notes/matches',
 			resolveTeamNotes: async () => {
-				throw new Error(
+				throw new UserFacingCreateError(
 					'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
 				);
 			},
@@ -331,7 +332,7 @@ void test('createManualMatchNoteWorkflow surfaces known team resolution collisio
 		],
 		[
 			'notice',
-			'Could not resolve team notes: Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
+			'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
 		],
 	]);
 });

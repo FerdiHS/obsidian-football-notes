@@ -5,6 +5,7 @@ import type { Vault } from 'obsidian';
 
 import { createManualMatchNoteFile, createMatchNoteFile } from './match-note-files';
 import { createMatchNotePath } from './match-note-paths';
+import { UserFacingCreateError } from './user-facing-error';
 import type { ManualMatchNoteInput, MatchNoteInput } from '../types';
 
 void test('createMatchNoteFile retries until it finds a free path', async () => {
@@ -76,7 +77,36 @@ void test('createMatchNoteFile stops after 100 failed attempts', async () => {
 	await withFixedDate(fixedDate, async () => {
 		await assert.rejects(
 			createMatchNoteFile(vault as unknown as Vault, createInput(folder)),
-			/Could not create match note "New match note" in "Football notes\/matches" after 100 attempts\./i,
+			(error: unknown) => {
+				assert.ok(error instanceof UserFacingCreateError);
+				assert.equal(
+					error.message,
+					'Could not create match note "New match note" in "Football notes/matches" after 100 attempts.',
+				);
+				return true;
+			},
+		);
+	});
+});
+
+void test('createMatchNoteFile rejects a destination folder occupied by a file', async () => {
+	const fixedDate = new Date('2026-06-20T12:34:56Z');
+	const vault = new FakeVault();
+	const folder = 'Football notes/matches';
+
+	vault.seedFile(folder);
+
+	await withFixedDate(fixedDate, async () => {
+		await assert.rejects(
+			createMatchNoteFile(vault as unknown as Vault, createInput(folder)),
+			(error: unknown) => {
+				assert.ok(error instanceof UserFacingCreateError);
+				assert.equal(
+					error.message,
+					'Cannot create match note folder because "Football notes/matches" already exists as a file.',
+				);
+				return true;
+			},
 		);
 	});
 });

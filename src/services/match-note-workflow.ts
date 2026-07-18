@@ -1,4 +1,5 @@
 import { parseMatchUrl, type MatchUrlParseResult } from './match-url-parser';
+import { formatUserFacingErrorNotice } from './user-facing-error';
 import type { MatchNoteInput } from '../types';
 
 export interface MatchNoteCreatedFile {
@@ -46,7 +47,12 @@ export async function createMatchNoteFromUrlWorkflow<
 		return true;
 	} catch (error) {
 		dependencies.logError('Failed to create match note from URL.', error);
-		dependencies.showNotice('Could not create match note. See console for details.');
+		dependencies.showNotice(
+			formatUserFacingErrorNotice(
+				error,
+				'Could not create match note. See console for details.',
+			),
+		);
 		return false;
 	}
 }
