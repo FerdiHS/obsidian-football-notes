@@ -3,10 +3,6 @@ import type { TFile } from 'obsidian';
 import type FootballNotesPlugin from '../main';
 import { createTeamNoteFile } from '../services/team-player-note-files';
 import {
-	createNamedNoteWorkflow,
-	type NamedNoteCreationResult,
-} from '../services/team-player-note-workflow';
-import {
 	registerNamedNoteCommand,
 	type NamedNoteCommandDefinition,
 	type NamedNoteCommandDependencies,
@@ -15,17 +11,6 @@ import {
 
 export const CREATE_TEAM_NOTE_COMMAND_ID = 'create-team-note';
 export const CREATE_TEAM_NOTE_COMMAND_NAME = 'Create team note';
-
-export interface CreateTeamNoteWorkflowDependencies {
-	destinationFolder: string;
-	createTeamNoteFile: (input: {
-		destinationFolder: string;
-		name: string;
-	}) => Promise<NamedNoteCreationResult<TFile>>;
-	openTeamNote: (file: TFile) => Promise<void>;
-	showNotice: (message: string) => void;
-	logError: (message: string, error: unknown) => void;
-}
 
 export type CreateTeamNoteCommandDependencies = NamedNoteCommandDependencies;
 export type TeamNoteModalLike = NamedNoteModalLike;
@@ -53,18 +38,4 @@ export function registerCreateTeamNoteCommand(
 	dependencies: CreateTeamNoteCommandDependencies = {},
 ): void {
 	registerNamedNoteCommand(plugin, teamNoteCommandDefinition, dependencies);
-}
-
-export async function createTeamNote(
-	input: string,
-	dependencies: CreateTeamNoteWorkflowDependencies,
-): Promise<boolean> {
-	return await createNamedNoteWorkflow(input, {
-		destinationFolder: dependencies.destinationFolder,
-		noteKind: 'team',
-		createNoteFile: dependencies.createTeamNoteFile,
-		openNote: dependencies.openTeamNote,
-		showNotice: dependencies.showNotice,
-		logError: dependencies.logError,
-	});
 }
