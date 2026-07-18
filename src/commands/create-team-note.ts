@@ -1,4 +1,4 @@
-import type { App, TFile } from 'obsidian';
+import type { TFile } from 'obsidian';
 
 import type FootballNotesPlugin from '../main';
 import { createTeamNoteFile } from '../services/team-player-note-files';
@@ -6,7 +6,12 @@ import {
 	createNamedNoteWorkflow,
 	type NamedNoteCreationResult,
 } from '../services/team-player-note-workflow';
-import type { NamedNoteSubmitHandler } from '../ui/named-note-modal';
+import {
+	registerNamedNoteCommand,
+	type NamedNoteCommandDefinition,
+	type NamedNoteCommandDependencies,
+	type NamedNoteModalLike,
+} from './register-named-note-command';
 
 export const CREATE_TEAM_NOTE_COMMAND_ID = 'create-team-note';
 export const CREATE_TEAM_NOTE_COMMAND_NAME = 'Create team note';
@@ -22,93 +27,32 @@ export interface CreateTeamNoteWorkflowDependencies {
 	logError: (message: string, error: unknown) => void;
 }
 
-export interface CreateTeamNoteCommandDependencies {
-	createModal?: (
-		app: App,
-		onSubmit: NamedNoteSubmitHandler,
-	) => TeamNoteModalLike | Promise<TeamNoteModalLike>;
-	showNotice?: (message: string) => void;
-	logError?: (message: string, error: unknown) => void;
-}
+export type CreateTeamNoteCommandDependencies = NamedNoteCommandDependencies;
+export type TeamNoteModalLike = NamedNoteModalLike;
 
-export interface TeamNoteModalLike {
-	open(): void;
-}
+const teamNoteCommandDefinition: NamedNoteCommandDefinition<TFile> = {
+	id: CREATE_TEAM_NOTE_COMMAND_ID,
+	name: CREATE_TEAM_NOTE_COMMAND_NAME,
+	noteKind: 'team',
+	getDestinationFolder: (plugin) => plugin.settings.teamNotesFolder,
+	modalConfig: {
+		title: 'Create team note',
+		description: 'Enter a team name to create a new team note.',
+		fieldLabel: 'Team name',
+		placeholder: 'Real Madrid',
+		submitLabel: 'Create note',
+	},
+	createNoteFile: (plugin, input) => createTeamNoteFile(plugin.app.vault, input),
+	openNote: async (plugin, file) => {
+		await plugin.app.workspace.getLeaf(false).openFile(file);
+	},
+};
 
 export function registerCreateTeamNoteCommand(
 	plugin: FootballNotesPlugin,
-	dependencies: Partial<CreateTeamNoteCommandDependencies> = {},
+	dependencies: CreateTeamNoteCommandDependencies = {},
 ): void {
-	const showNotice = dependencies.showNotice ?? createDefaultShowNotice();
-	const logError = dependencies.logError ?? defaultLogError;
-
-	plugin.addCommand({
-		id: CREATE_TEAM_NOTE_COMMAND_ID,
-		name: CREATE_TEAM_NOTE_COMMAND_NAME,
-		callback: async () => {
-			try {
-				const createModal = dependencies.createModal ?? createDefaultTeamNoteModal;
-
-				const createdModal = await createModal(plugin.app, async (input) => {
-					return await createTeamNote(input, {
-						destinationFolder: plugin.settings.teamNotesFolder,
-						createTeamNoteFile: (noteInput) =>
-							createTeamNoteFile(plugin.app.vault, noteInput),
-						openTeamNote: async (file) => {
-							await plugin.app.workspace.getLeaf(false).openFile(file);
-						},
-						showNotice,
-						logError,
-					});
-				});
-
-				createdModal.open();
-			} catch (error) {
-				logError('Failed to open team note dialog.', error);
-				showNotice('Could not open team note dialog. See console for details.');
-			}
-		},
-	});
-}
-
-function createDefaultShowNotice(): (message: string) => void {
-	return (message: string) => {
-		void import('obsidian')
-			.then(({ Notice }) => {
-				new Notice(message);
-			})
-			.catch((error) => {
-				console.error('Could not show notice.', error, message);
-			});
-	};
-}
-
-function defaultLogError(message: string, error: unknown): void {
-	console.error(message, error);
-}
-
-async function createDefaultTeamNoteModal(
-	app: App,
-	onSubmit: NamedNoteSubmitHandler,
-): Promise<TeamNoteModalLike> {
-	const { NamedNoteModal } = await import('../ui/named-note-modal');
-	const modal = new NamedNoteModal(
-		app,
-		{
-			title: 'Create team note',
-			description: 'Enter a team name to create a new team note.',
-			fieldLabel: 'Team name',
-			placeholder: 'Real Madrid',
-			submitLabel: 'Create note',
-		},
-		onSubmit,
-	);
-
-	return {
-		open: () => {
-			modal.open();
-		},
-	};
+	registerNamedNoteCommand(plugin, teamNoteCommandDefinition, dependencies);
 }
 
 export async function createTeamNote(

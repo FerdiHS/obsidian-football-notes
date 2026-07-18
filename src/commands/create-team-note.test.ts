@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type FootballNotesPlugin from '../main';
+import type { NamedNoteModalConfig, NamedNoteSubmitHandler } from '../ui/named-note-modal';
 import {
 	CREATE_TEAM_NOTE_COMMAND_ID,
 	CREATE_TEAM_NOTE_COMMAND_NAME,
@@ -14,8 +15,17 @@ interface RegisteredCommand {
 	callback: () => Promise<void>;
 }
 
-void test('registerCreateTeamNoteCommand wires the command entrypoint', async () => {
+const teamModalConfig: NamedNoteModalConfig = {
+	title: 'Create team note',
+	description: 'Enter a team name to create a new team note.',
+	fieldLabel: 'Team name',
+	placeholder: 'Real Madrid',
+	submitLabel: 'Create note',
+};
+
+void test('registerCreateTeamNoteCommand wires the team command configuration', async () => {
 	let capturedCommand: RegisteredCommand | undefined;
+	let receivedConfig: NamedNoteModalConfig | undefined;
 	let createModalCalls = 0;
 	let openCalls = 0;
 
@@ -31,8 +41,9 @@ void test('registerCreateTeamNoteCommand wires the command entrypoint', async ()
 	} as unknown as FootballNotesPlugin;
 
 	registerCreateTeamNoteCommand(plugin, {
-		createModal: (_app: unknown, onSubmit) => {
+		createModal: (_app: unknown, config, onSubmit) => {
 			createModalCalls += 1;
+			receivedConfig = config;
 			assert.equal(typeof onSubmit, 'function');
 
 			return {
@@ -51,11 +62,12 @@ void test('registerCreateTeamNoteCommand wires the command entrypoint', async ()
 
 	assert.equal(createModalCalls, 1);
 	assert.equal(openCalls, 1);
+	assert.deepEqual(receivedConfig, teamModalConfig);
 });
 
 void test('registerCreateTeamNoteCommand submits the modal value through the workflow', async () => {
 	let capturedCommand: RegisteredCommand | undefined;
-	let capturedOnSubmit: ((value: string) => Promise<boolean>) | undefined;
+	let capturedOnSubmit: NamedNoteSubmitHandler | undefined;
 	const createdPaths: string[] = [];
 	const openedFiles: Array<{ name: string }> = [];
 	const notices: string[] = [];
@@ -72,7 +84,7 @@ void test('registerCreateTeamNoteCommand submits the modal value through the wor
 	} as unknown as FootballNotesPlugin;
 
 	registerCreateTeamNoteCommand(plugin, {
-		createModal: (_app: unknown, onSubmit) => {
+		createModal: (_app: unknown, _config, onSubmit) => {
 			capturedOnSubmit = onSubmit;
 
 			return {
