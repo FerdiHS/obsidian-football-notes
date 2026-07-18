@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createNamedNoteWorkflow } from './team-player-note-workflow';
+import { UserFacingCreateError } from './user-facing-error';
 
 void test('createNamedNoteWorkflow creates and opens a team note', async () => {
 	await assertNamedNoteWorkflow('team', 'Team Note');
@@ -89,7 +90,9 @@ void test('createNamedNoteWorkflow reports create failures for player notes', as
 		destinationFolder: 'Football notes/players',
 		noteKind: 'player',
 		createNoteFile: async () => {
-			throw new Error('vault unavailable');
+			throw new Error(
+				'Cannot create player note because "Football notes/players/Player Note.md" already exists for a different player note.',
+			);
 		},
 		openNote: async () => {
 			throw new Error('should not be called');
@@ -104,7 +107,11 @@ void test('createNamedNoteWorkflow reports create failures for player notes', as
 
 	assert.equal(result, false);
 	assert.deepEqual(calls, [
-		['error', 'Failed to create player note.', 'vault unavailable'],
+		[
+			'error',
+			'Failed to create player note.',
+			'Cannot create player note because "Football notes/players/Player Note.md" already exists for a different player note.',
+		],
 		['notice', 'Could not create player note. See console for details.'],
 	]);
 });
@@ -116,7 +123,7 @@ void test('createNamedNoteWorkflow surfaces known collision errors for team note
 		destinationFolder: 'Football notes/teams',
 		noteKind: 'team',
 		createNoteFile: async () => {
-			throw new Error(
+			throw new UserFacingCreateError(
 				'Cannot create team note because "Football notes/teams/Team Note.md" already exists for a different team note.',
 			);
 		},
@@ -140,7 +147,7 @@ void test('createNamedNoteWorkflow surfaces known collision errors for team note
 		],
 		[
 			'notice',
-			'Could not create team note: Cannot create team note because "Football notes/teams/Team Note.md" already exists for a different team note.',
+			'Cannot create team note because "Football notes/teams/Team Note.md" already exists for a different team note.',
 		],
 	]);
 });

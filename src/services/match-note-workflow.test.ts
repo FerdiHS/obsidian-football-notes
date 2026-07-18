@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createMatchNoteFromUrlWorkflow } from './match-note-workflow';
+import { UserFacingCreateError } from './user-facing-error';
 
 void test('createMatchNoteFromUrlWorkflow creates and opens a match note for a valid URL', async () => {
 	const calls: Array<unknown> = [];
@@ -65,11 +66,12 @@ void test('createMatchNoteFromUrlWorkflow shows the parser error for invalid URL
 
 void test('createMatchNoteFromUrlWorkflow reports creation failures', async () => {
 	const calls: Array<unknown> = [];
+	const unknownError = { reason: 'disk full' };
 
 	const result = await createMatchNoteFromUrlWorkflow('https://example.com/match', {
 		destinationFolder: 'Football notes/matches',
 		createMatchNoteFile: async () => {
-			throw new Error('disk full');
+			return Promise.reject(unknownError as unknown as Error);
 		},
 		openMatchNote: async () => {
 			throw new Error('should not be called');
@@ -78,15 +80,45 @@ void test('createMatchNoteFromUrlWorkflow reports creation failures', async () =
 			calls.push(['notice', message]);
 		},
 		logError: (message, error) => {
-			calls.push(['error', message, (error as Error).message]);
+			calls.push(['error', message, error]);
 		},
 	});
 
 	assert.equal(result, false);
 	assert.deepEqual(calls, [
-		['error', 'Failed to create match note from URL.', 'disk full'],
+		['error', 'Failed to create match note from URL.', unknownError],
 		['notice', 'Could not create match note. See console for details.'],
 	]);
+});
+
+void test('createMatchNoteFromUrlWorkflow exposes typed creation failures', async () => {
+	const calls: Array<unknown> = [];
+	const errorMessage =
+		'Could not create match note "New match note" in "Football notes/matches" after 100 attempts.';
+
+	const result = await createMatchNoteFromUrlWorkflow('https://example.com/match', {
+		destinationFolder: 'Football notes/matches',
+		createMatchNoteFile: async () => {
+			throw new UserFacingCreateError(errorMessage);
+		},
+		openMatchNote: async () => {
+			throw new Error('should not be called');
+		},
+		showNotice: (message) => {
+			calls.push(['notice', message]);
+		},
+		logError: (message, error) => {
+			calls.push(['error', message, error]);
+		},
+	});
+
+	assert.equal(result, false);
+	const errorCall = calls[0];
+	assert.ok(Array.isArray(errorCall));
+	assert.equal(errorCall[0], 'error');
+	assert.equal(errorCall[1], 'Failed to create match note from URL.');
+	assert.ok(errorCall[2] instanceof UserFacingCreateError);
+	assert.deepEqual(calls[1], ['notice', errorMessage]);
 });
 
 void test('createMatchNoteFromUrlWorkflow reports open failures without hiding the created note', async () => {
