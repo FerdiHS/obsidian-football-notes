@@ -1,14 +1,28 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/no-floating-promises, no-undef */
 
 import { deepStrictEqual, strictEqual } from 'node:assert';
+import { resolve } from 'node:path';
 import { setImmediate } from 'node:timers/promises';
 import { test } from 'node:test';
+import { createJiti } from 'jiti';
 import { ButtonComponent, TextComponent } from './named-note-modal-test-support';
 
 let NamedNoteModal: typeof import('./named-note-modal').NamedNoteModal;
-const namedNoteModalReady = import('./named-note-modal').then((module) => {
-	NamedNoteModal = module.NamedNoteModal;
+const previousJitiAlias = process.env.JITI_ALIAS;
+process.env.JITI_ALIAS = JSON.stringify({
+	obsidian: resolve('src/ui/named-note-modal-test-support.ts'),
 });
+const namedNoteModalReady = (async () => {
+	try {
+		const module = await createJiti(import.meta.url).import<
+			typeof import('./named-note-modal')
+		>('./named-note-modal');
+		NamedNoteModal = module.NamedNoteModal;
+	} finally {
+		if (previousJitiAlias === undefined) delete process.env.JITI_ALIAS;
+		else process.env.JITI_ALIAS = previousJitiAlias;
+	}
+})();
 
 type TestModal = {
 	onOpen(): void;
