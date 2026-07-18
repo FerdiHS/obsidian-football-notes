@@ -6,6 +6,7 @@ import { createExactNoteFileFromDraft } from './note-files';
 import { createNamedNotePath } from './note-paths';
 import { createPlayerNoteDraft, createTeamNoteDraft } from './team-player-note-template';
 import type { NamedNoteCreationResult } from './team-player-note-workflow';
+import { UserFacingCreateError } from './user-facing-error';
 
 export async function createTeamNoteFile(
 	vault: Vault,
@@ -204,7 +205,7 @@ function isSupportedPlayerNoteType(value: string): boolean {
 }
 
 function createExistingNamedNoteTypeError(exactPath: string, noteKind: 'team' | 'player'): Error {
-	return new Error(
+	return new UserFacingCreateError(
 		`Cannot create ${noteKind} note because "${exactPath}" already exists as a non-${noteKind} file.`,
 	);
 }
@@ -213,13 +214,13 @@ function createExistingNamedNoteCollisionError(
 	exactPath: string,
 	noteKind: 'team' | 'player',
 ): Error {
-	return new Error(
+	return new UserFacingCreateError(
 		`Cannot create ${noteKind} note because "${exactPath}" already exists for a different ${noteKind} note.`,
 	);
 }
 
 function createExistingNamedNoteFolderError(exactPath: string, noteKind: 'team' | 'player'): Error {
-	return new Error(
+	return new UserFacingCreateError(
 		`Cannot create ${noteKind} note because "${exactPath}" already exists as a folder.`,
 	);
 }

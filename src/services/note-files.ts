@@ -1,6 +1,7 @@
 import type { TFile, Vault } from 'obsidian';
 
 import { createNamedNotePath, getFolderCreationChain } from './note-paths';
+import { UserFacingCreateError } from './user-facing-error';
 
 const MAX_NOTE_CREATE_ATTEMPTS = 100;
 
@@ -108,7 +109,7 @@ async function ensureFolderExists(vault: Vault, folder: string, noteLabel: strin
 				}
 
 				if (createdFolder !== null) {
-					throw new Error(
+					throw new UserFacingCreateError(
 						`Cannot create ${noteLabel} folder because "${folderPath}" already exists as a file.`,
 					);
 				}
@@ -124,7 +125,7 @@ async function ensureFolderExists(vault: Vault, folder: string, noteLabel: strin
 		}
 
 		if (!isFolderLike(existingFile)) {
-			throw new Error(
+			throw new UserFacingCreateError(
 				`Cannot create ${noteLabel} folder because "${folderPath}" already exists as a file.`,
 			);
 		}
@@ -145,7 +146,7 @@ function createNoteRetryLimitError(
 	attempts: number,
 	noteLabel: string,
 ): Error {
-	return new Error(
+	return new UserFacingCreateError(
 		`Could not create ${noteLabel} "${title}" in "${folder}" after ${attempts} attempts.`,
 	);
 }

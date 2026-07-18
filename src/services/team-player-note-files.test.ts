@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { Vault } from 'obsidian';
 
 import { createPlayerNoteFile, createTeamNoteFile } from './team-player-note-files';
+import { UserFacingCreateError } from './user-facing-error';
 
 void test('createTeamNoteFile returns the existing team note instead of duplicating it', async () => {
 	const vault = new FakeVault();
@@ -137,7 +138,14 @@ void test('createTeamNoteFile rejects a non-team file that blocks the target pat
 			destinationFolder: ' Football notes/teams ',
 			name: ' Real Madrid ',
 		}),
-		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists as a non-team file\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
+			);
+			return true;
+		},
 	);
 });
 
@@ -174,7 +182,14 @@ void test('createTeamNoteFile rejects a folder that blocks the exact note path',
 			destinationFolder: ' Football notes/teams ',
 			name: ' Real Madrid ',
 		}),
-		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists as a folder\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a folder.',
+			);
+			return true;
+		},
 	);
 });
 
@@ -198,7 +213,14 @@ void test('createTeamNoteFile rejects nested frontmatter metadata instead of reu
 			destinationFolder: ' Football notes/teams ',
 			name: ' Real Madrid ',
 		}),
-		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists as a non-team file\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists as a non-team file.',
+			);
+			return true;
+		},
 	);
 
 	assert.deepEqual(vault.createCalls, []);
@@ -223,7 +245,14 @@ void test('createTeamNoteFile rejects a different team that appears during exact
 			destinationFolder: ' Football notes/teams ',
 			name: ' Real Madrid ',
 		}),
-		/Cannot create team note because "Football notes\/teams\/Real Madrid\.md" already exists for a different team note\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create team note because "Football notes/teams/Real Madrid.md" already exists for a different team note.',
+			);
+			return true;
+		},
 	);
 
 	assert.equal(vault.createCalls.length, 1);
@@ -248,7 +277,14 @@ void test('createTeamNoteFile rejects an exact-name collision with a different t
 			destinationFolder: ' Football notes/teams ',
 			name: ' Foo:Bar ',
 		}),
-		/Cannot create team note because "Football notes\/teams\/Foo-Bar\.md" already exists for a different team note\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create team note because "Football notes/teams/Foo-Bar.md" already exists for a different team note.',
+			);
+			return true;
+		},
 	);
 
 	assert.deepEqual(vault.createCalls, []);
@@ -349,7 +385,14 @@ void test('createPlayerNoteFile rejects a folder that blocks the exact note path
 			destinationFolder: ' Football notes/players ',
 			name: ' Lamine Yamal ',
 		}),
-		/Cannot create player note because "Football notes\/players\/Lamine Yamal\.md" already exists as a folder\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create player note because "Football notes/players/Lamine Yamal.md" already exists as a folder.',
+			);
+			return true;
+		},
 	);
 });
 
@@ -389,7 +432,14 @@ void test('createPlayerNoteFile rejects a non-player file that blocks the target
 			destinationFolder: ' Football notes/players ',
 			name: ' Lamine Yamal ',
 		}),
-		/Cannot create player note because "Football notes\/players\/Lamine Yamal\.md" already exists as a non-player file\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create player note because "Football notes/players/Lamine Yamal.md" already exists as a non-player file.',
+			);
+			return true;
+		},
 	);
 });
 
@@ -412,7 +462,14 @@ void test('createPlayerNoteFile rejects an exact-name collision with a different
 			destinationFolder: ' Football notes/players ',
 			name: ' Foo:Bar ',
 		}),
-		/Cannot create player note because "Football notes\/players\/Foo-Bar\.md" already exists for a different player note\./,
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create player note because "Football notes/players/Foo-Bar.md" already exists for a different player note.',
+			);
+			return true;
+		},
 	);
 
 	assert.deepEqual(vault.createCalls, []);
