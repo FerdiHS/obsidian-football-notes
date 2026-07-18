@@ -210,6 +210,7 @@ void test('button and Enter submissions share the same pending guard', async () 
 	});
 
 	modal.submitButton.click();
+	strictEqual(submissions, 1);
 	keydown(modal, 'Enter');
 
 	strictEqual(submissions, 1);
