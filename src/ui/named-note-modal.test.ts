@@ -121,6 +121,15 @@ void test('the keydown listener is removed when the modal closes', async () => {
 	strictEqual(modal.nameField.input.inputEl.listeners.get('keydown')?.size, 0);
 });
 
+void test('the cancel button closes the modal and removes the keydown listener', async () => {
+	const modal = await openModal(async () => false);
+
+	modal.cancelButton.click();
+
+	strictEqual(modal.closed, true);
+	strictEqual(modal.nameField.input.inputEl.listeners.get('keydown')?.size, 0);
+});
+
 void test('a second submission is ignored while the first submission is pending', async () => {
 	const pending = deferred<boolean>();
 	let submissions = 0;
