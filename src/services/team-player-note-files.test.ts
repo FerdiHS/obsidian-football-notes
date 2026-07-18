@@ -193,6 +193,26 @@ void test('createTeamNoteFile rejects a folder that blocks the exact note path',
 	);
 });
 
+void test('createTeamNoteFile preserves a folder conflict in the configured destination folder', async () => {
+	const vault = new FakeVault();
+	vault.seedFile('Football notes/teams');
+
+	await assert.rejects(
+		createTeamNoteFile(vault as unknown as Vault, {
+			destinationFolder: ' Football notes/teams ',
+			name: ' Real Madrid ',
+		}),
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create team note folder because "Football notes/teams" already exists as a file.',
+			);
+			return true;
+		},
+	);
+});
+
 void test('createTeamNoteFile rejects nested frontmatter metadata instead of reusing it', async () => {
 	const vault = new FakeVault();
 	vault.seedFile(
@@ -390,6 +410,26 @@ void test('createPlayerNoteFile rejects a folder that blocks the exact note path
 			assert.equal(
 				error.message,
 				'Cannot create player note because "Football notes/players/Lamine Yamal.md" already exists as a folder.',
+			);
+			return true;
+		},
+	);
+});
+
+void test('createPlayerNoteFile preserves a folder conflict in the configured destination folder', async () => {
+	const vault = new FakeVault();
+	vault.seedFile('Football notes/players');
+
+	await assert.rejects(
+		createPlayerNoteFile(vault as unknown as Vault, {
+			destinationFolder: ' Football notes/players ',
+			name: ' Lamine Yamal ',
+		}),
+		(error: unknown) => {
+			assert.ok(error instanceof UserFacingCreateError);
+			assert.equal(
+				error.message,
+				'Cannot create player note folder because "Football notes/players" already exists as a file.',
 			);
 			return true;
 		},

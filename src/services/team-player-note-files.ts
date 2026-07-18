@@ -34,7 +34,7 @@ export async function createTeamNoteFile(
 			existedAlready: false,
 		};
 	} catch (error) {
-		if (!isAlreadyExistsError(error)) {
+		if (error instanceof UserFacingCreateError || !isAlreadyExistsError(error)) {
 			throw error;
 		}
 
@@ -77,7 +77,7 @@ export async function createPlayerNoteFile(
 			existedAlready: false,
 		};
 	} catch (error) {
-		if (!isAlreadyExistsError(error)) {
+		if (error instanceof UserFacingCreateError || !isAlreadyExistsError(error)) {
 			throw error;
 		}
 
