@@ -164,13 +164,19 @@ void test('closing is prevented while pending', async () => {
 });
 
 void test('controls restore when submission returns false and the modal remains open', async () => {
-	const modal = await openModal(async () => false);
+	let submissions = 0;
+	const modal = await openModal(async () => {
+		submissions++;
+		return false;
+	});
 
 	await modal.submit();
 
 	strictEqual(modal.closed, false);
 	strictEqual(modal.submitButton.disabled, false);
 	strictEqual(modal.cancelButton.disabled, false);
+	await modal.submit();
+	strictEqual(submissions, 2);
 });
 
 void test('controls restore and the exact error is preserved when submission throws', async () => {
