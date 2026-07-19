@@ -20,7 +20,7 @@ Requirements:
 - Node.js >= 20.17 (current LTS or newer)
 - npm
 
-Commands:
+Common development commands:
 
 ```bash
 npm install
@@ -29,7 +29,15 @@ npm run build
 npm run lint
 ```
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contributor workflow, including the dedicated dev-vault setup and local Git hooks.
+Before completing or submitting a change, run the full validation suite:
+
+```bash
+npm run check
+```
+
+Individual commands and focused tests may still be used during development.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contributor workflow, including the dedicated dev-vault setup, validation details, and local Git hooks.
 
 ## Releases
 
