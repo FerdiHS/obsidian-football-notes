@@ -40,7 +40,15 @@ That keeps the generated `main.js` and `manifest.json` at the plugin root where 
 
 ## Validation commands
 
-Run these before pushing significant changes:
+Before pushing significant changes or declaring an implementation complete, run:
+
+```bash
+npm run check
+```
+
+This is the canonical full validation command. It runs the test suite, production build and TypeScript checking, linting, and formatting verification.
+
+Individual commands and focused tests remain useful during development:
 
 ```bash
 npm run test
@@ -49,12 +57,17 @@ npm run lint
 npm run format:check
 ```
 
+Run `npm run version:check` separately when validating release and compatibility metadata.
+
 ## Git hooks
 
 This repository installs local Git hooks with Husky:
 
-- `pre-commit`: runs `lint-staged` to format and lint staged files
-- `pre-push`: runs `npm run test` and `npm run build`
+- `pre-commit`: runs `lint-staged` as a focused staged-file formatting and linting gate
+- `pre-push`: runs `npm run test` and `npm run build` as a focused behavior and production-build gate
+- `npm run check`: remains the full pre-completion and CI validation gate
+
+The hooks are intentionally narrower than the full validation suite so routine commits and pushes retain fast feedback. They do not need to run all of `npm run check`.
 
 If hooks stop working after reinstalling dependencies, run:
 
@@ -78,4 +91,4 @@ Use `npm run version:sync` to add the next release entry to `versions.json` when
 `version:check` compares the recorded `minAppVersion` against `manifest.json` in Release Please branches and release-tag builds so shipped metadata stays honest without blocking normal main-branch merges.
 `versions.json` is release history, so the sync script refreshes only the current release entry in Release Please PRs and does not rewrite older shipped releases. The release PR sync workflow keeps Release Please branches aligned automatically.
 
-Only FerdiHS should apply the `release: ready` label to release PRs. The automation removes that label again if the release branch changes, so approval always applies to the latest commit.
+Only [FerdiHS](https://github.com/FerdiHS) should apply the `release: ready` label to release PRs. The automation removes that label again if the release branch changes, so approval always applies to the latest commit.
