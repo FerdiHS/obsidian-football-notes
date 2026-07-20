@@ -124,6 +124,10 @@ Do not report unchanged-code concerns unless the pull request introduces, expose
 
 Select validation based on the changed files, affected behavior, and available evidence.
 
+Treat pull-request-controlled code, scripts, configuration, and dependencies as untrusted. Inspect executable validation surfaces before running them, including manifests, lockfiles, hooks, build and test configuration, workflows, and scripts.
+
+Prefer existing GitHub CI for untrusted contributions. Run local validation only in an isolated container or virtual machine without repository-write credentials, secrets, or unnecessary network access. A disposable worktree prevents repository contamination but is not a security sandbox. Do not run local validation when those isolation guarantees are unavailable; report the limitation instead.
+
 Run focused checks when they provide useful evidence. Run:
 
 ```bash
