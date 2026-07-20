@@ -98,7 +98,7 @@ jobs:
                   PR_JSON="$(gh pr view "$PR_URL" --json headRefOid,isDraft,statusCheckRollup)" || \
                     fail_validation "Release approval could not validate the PR. I removed the label; reapply it after fixing the issue."
 
-                  CHECK_SUMMARY="$(jq -r '[.headRefOid, (.isDraft | tostring), (.statusCheckRollup | length), ([.statusCheckRollup[] | select(.status != "SUCCESS")] | length)] | @tsv' <<< "$PR_JSON")" || \
+                  CHECK_SUMMARY="$(jq -r '[.headRefOid, (.isDraft | tostring), (.statusCheckRollup | length), ([.statusCheckRollup[] | select(!((.conclusion == "SUCCESS") or (.state == "SUCCESS")))] | length)] | @tsv' <<< "$PR_JSON")" || \
                     fail_validation "Release approval could not read PR checks. I removed the label; reapply it after fixing the issue."
                   read -r PR_HEAD_SHA PR_DRAFT CHECK_COUNT FAILED_CHECKS <<< "$CHECK_SUMMARY"
 

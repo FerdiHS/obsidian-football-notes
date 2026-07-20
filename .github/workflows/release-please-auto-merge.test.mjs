@@ -14,7 +14,9 @@ test('release merge workflow uses exact-head label-triggered merging', async () 
 	assert.match(workflow, /headRefOid/);
 	assert.match(workflow, /statusCheckRollup/);
 	assert.match(workflow, /CHECK_COUNT.*-eq 0/);
-	assert.match(workflow, /status.*SUCCESS/);
+	assert.match(workflow, /\.conclusion == "SUCCESS"/);
+	assert.match(workflow, /\.state == "SUCCESS"/);
+	assert.doesNotMatch(workflow, /\.status\s*[!=]=?\s*"SUCCESS"/);
 	assert.match(workflow, /--match-head-commit/);
 	assert.match(workflow, /gh pr edit[\s\S]*--remove-label/);
 	assert.match(workflow, /gh pr comment/);
