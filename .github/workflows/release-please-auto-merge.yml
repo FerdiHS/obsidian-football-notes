@@ -4,9 +4,7 @@ on:
     pull_request_target:
         types:
             - labeled
-            - unlabeled
             - synchronize
-            - ready_for_review
             - converted_to_draft
         branches:
             - main
@@ -42,25 +40,22 @@ jobs:
                   permission-pull-requests: write
                   permission-issues: write
 
-            - name: Disable auto-merge and remove stale approval label
+            - name: Remove stale approval label
               env:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   PR_URL: ${{ github.event.pull_request.html_url }}
               run: |
-                  if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
-                    gh pr merge --disable-auto "$PR_URL"
-                  fi
-
                   gh pr edit "$PR_URL" --remove-label "release: ready"
 
-    disable-auto-merge-on-label-removal:
+    merge-release:
         if: >
             github.event.pull_request.base.ref == 'main' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
             startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
             contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
-            github.event.action == 'unlabeled' &&
-            github.event.label.name == 'release: ready'
+            github.event.action == 'labeled' &&
+            github.event.label.name == 'release: ready' &&
+            contains(github.event.pull_request.labels.*.name, 'release: ready')
         runs-on: ubuntu-latest
         timeout-minutes: 5
 
@@ -75,77 +70,51 @@ jobs:
                   permission-pull-requests: write
                   permission-issues: write
 
-            - name: Disable auto-merge after approval label is removed
+            - name: Validate and merge release
               env:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   PR_URL: ${{ github.event.pull_request.html_url }}
-              run: |
-                  if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
-                    gh pr merge --disable-auto "$PR_URL"
-                  fi
-
-    apply-release-approval:
-        if: >
-            github.event.pull_request.base.ref == 'main' &&
-            github.event.pull_request.head.repo.full_name == github.repository &&
-            startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
-            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
-            contains(github.event.pull_request.labels.*.name, 'release: ready') &&
-            github.event.action != 'synchronize' &&
-            (
-                github.event.action == 'ready_for_review' ||
-                (
-                    github.event.action == 'labeled' &&
-                    github.event.label.name == 'release: ready'
-                )
-            )
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-
-        steps:
-            - name: Generate GitHub App token
-              id: app-token
-              uses: actions/create-github-app-token@v2
-              with:
-                  app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
-                  private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
-                  permission-contents: write
-                  permission-pull-requests: write
-                  permission-issues: write
-
-            - name: Apply release approval
-              env:
-                  GH_TOKEN: ${{ steps.app-token.outputs.token }}
-                  PR_URL: ${{ github.event.pull_request.html_url }}
-                  PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-                  PR_ACTION: ${{ github.event.action }}
+                  PR_EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
                   PR_LABELER: ${{ github.actor }}
                   PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-                  PR_DRAFT: ${{ github.event.pull_request.draft }}
-                  APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+                  APP_SLUG: ${{ vars.RELEASE_PLEASE_APP_SLUG }}
               run: |
-                  if [ "$PR_ACTION" = "labeled" ] && [ "$PR_LABELER" != "FerdiHS" ]; then
-                    if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
-                      gh pr merge --disable-auto "$PR_URL"
-                    fi
+                  set -euo pipefail
 
-                    gh pr edit "$PR_URL" --remove-label "release: ready"
-                    gh pr comment "$PR_URL" --body "Only @FerdiHS can apply \`release: ready\` to Release Please PRs. I removed the label and disabled auto-merge."
+                  fail_validation() {
+                    gh pr edit "$PR_URL" --remove-label "release: ready" || true
+                    gh pr comment "$PR_URL" --body "$1" || true
                     exit 0
-                  fi
+                  }
 
-                  if [ "$PR_DRAFT" = "true" ]; then
-                    exit 0
+                  if [ "$PR_LABELER" != "FerdiHS" ]; then
+                    fail_validation "Release approval rejected: only @FerdiHS can apply \\`release: ready\\`. I removed the label."
                   fi
 
                   if [ "$PR_AUTHOR" != "${APP_SLUG}[bot]" ]; then
-                    if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
-                      gh pr merge --disable-auto "$PR_URL"
-                    fi
-
-                    gh pr edit "$PR_URL" --remove-label "release: ready"
-                    gh pr comment "$PR_URL" --body "Only Release Please bot-authored PRs can be approved with \`release: ready\`. I removed the label and disabled auto-merge."
-                    exit 0
+                    fail_validation "Release approval rejected: this PR is not authored by the Release Please App. I removed the label."
                   fi
 
-                  gh pr merge --auto --squash --delete-branch --match-head-commit "$PR_HEAD_SHA" "$PR_URL"
+                  PR_JSON="$(gh pr view "$PR_URL" --json headRefOid,isDraft,statusCheckRollup)" || \
+                    fail_validation "Release approval could not validate the PR. I removed the label; reapply it after fixing the issue."
+
+                  CHECK_SUMMARY="$(jq -r '[.headRefOid, (.isDraft | tostring), (.statusCheckRollup | length), ([.statusCheckRollup[] | select(.status != "SUCCESS")] | length)] | @tsv' <<< "$PR_JSON")" || \
+                    fail_validation "Release approval could not read PR checks. I removed the label; reapply it after fixing the issue."
+                  read -r PR_HEAD_SHA PR_DRAFT CHECK_COUNT FAILED_CHECKS <<< "$CHECK_SUMMARY"
+
+                  if [ "$PR_DRAFT" = "true" ]; then
+                    fail_validation "Release approval rejected: the PR is still a draft. I removed the label."
+                  fi
+
+                  if [ "$PR_HEAD_SHA" != "$PR_EVENT_HEAD_SHA" ]; then
+                    fail_validation "Release approval rejected: the label is stale for the current commit. I removed the label."
+                  fi
+
+                  if [ "$CHECK_COUNT" -eq 0 ] || [ "$FAILED_CHECKS" -ne 0 ]; then
+                    fail_validation "Release approval blocked: every status check must report SUCCESS. I removed the label; reapply it after all checks pass."
+                  fi
+
+                  if ! gh pr merge --squash --delete-branch --match-head-commit "$PR_HEAD_SHA" "$PR_URL"; then
+                    gh pr edit "$PR_URL" --remove-label "release: ready" || true
+                    gh pr comment "$PR_URL" --body "Release merge failed for the validated commit. I removed the label; reapply it after fixing the issue." || true
+                  fi
