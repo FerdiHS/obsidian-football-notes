@@ -11,8 +11,8 @@ on:
             - main
 
 permissions:
-    contents: write
-    pull-requests: write
+    contents: read
+    pull-requests: read
 
 jobs:
     sync-version-metadata:
@@ -20,67 +20,116 @@ jobs:
             github.event.pull_request.base.ref == 'main' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
             startsWith(github.event.pull_request.head.ref, 'release-please--branches--main') &&
-            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]')
+            contains(github.event.pull_request.body || '', 'This PR was generated with [Release Please]') &&
+            github.event.pull_request.user.login == format('{0}[bot]', vars.RELEASE_PLEASE_APP_SLUG)
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
         steps:
-            - name: Generate GitHub App token
-              id: app-token
-              uses: actions/create-github-app-token@v2
-              with:
-                  app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
-                  private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
-                  permission-contents: write
-                  permission-pull-requests: write
-
-            - name: Confirm Release Please bot authored the PR
-              id: bot-check
-              env:
-                  PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-                  APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-              run: |
-                  if [ "$PR_AUTHOR" = "${APP_SLUG}[bot]" ]; then
-                    echo "is_release_bot=true" >> "$GITHUB_OUTPUT"
-                    exit 0
-                  fi
-
-                  echo "is_release_bot=false" >> "$GITHUB_OUTPUT"
-                  echo "Skipping version metadata sync because this PR was not authored by the Release Please bot."
-
             - uses: actions/checkout@v4
-              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
               with:
-                  ref: ${{ github.event.pull_request.head.ref }}
-                  token: ${{ steps.app-token.outputs.token }}
+                  ref: ${{ github.event.pull_request.head.sha }}
+                  token: ${{ github.token }}
+                  persist-credentials: false
                   fetch-depth: 0
 
-            - name: Use Node.js 20
-              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20.x
-                  cache: npm
-
-            - run: npm ci
-              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
-            - run: npm run version:sync
-              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
-            - run: npm run version:check
-              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
-
-            - name: Commit version metadata changes
-              if: ${{ steps.bot-check.outputs.is_release_bot == 'true' }}
+            - name: Synchronize and validate version metadata from the trusted base revision
+              id: sync-version-metadata
               env:
+                  BASE_SHA: ${{ github.event.pull_request.base.sha }}
                   BRANCH: ${{ github.event.pull_request.head.ref }}
+                  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+                  READ_TOKEN: ${{ github.token }}
               run: |
-                  if git diff --quiet -- manifest.json versions.json; then
+                  set -euo pipefail
+
+                  if [ "$(git rev-parse HEAD)" != "$HEAD_SHA" ]; then
+                    echo "Checked-out revision does not match the pull request head."
+                    exit 1
+                  fi
+
+                  git status --short --untracked-files=all --ignored
+                  if [ -n "$(git status --porcelain --untracked-files=all --ignored)" ]; then
+                    echo "Checkout is not clean."
+                    exit 1
+                  fi
+
+                  git -c http.extraheader="AUTHORIZATION: bearer $READ_TOKEN" fetch --no-tags origin "$BASE_SHA"
+                  git rev-parse --verify "${BASE_SHA}^{commit}" >/dev/null
+                  git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA"
+
+                  TRUSTED_SCRIPT="$(mktemp)"
+                  trap 'rm -f "$TRUSTED_SCRIPT"' EXIT
+                  git show "${BASE_SHA}:version-bump.mjs" > "$TRUSTED_SCRIPT"
+
+                  node "$TRUSTED_SCRIPT" sync
+                  node "$TRUSTED_SCRIPT" check
+
+                  git status --short --untracked-files=all --ignored
+                  UNTRACKED_PATHS="$(
+                    {
+                      git ls-files --others --exclude-standard
+                      git ls-files --others --ignored --exclude-standard
+                    } | sort -u
+                  )"
+                  if [ -n "$UNTRACKED_PATHS" ]; then
+                    echo "Unexpected untracked output:"
+                    printf '%s\n' "$UNTRACKED_PATHS"
+                    exit 1
+                  fi
+
+                  CHANGED_PATHS="$(
+                    {
+                      git diff --name-only --no-renames
+                      git diff --cached --name-only --no-renames
+                    } | sort -u
+                  )"
+                  if [ -z "$CHANGED_PATHS" ]; then
                     echo "No release metadata changes were needed."
+                    echo "has_changes=false" >> "$GITHUB_OUTPUT"
                     exit 0
                   fi
+
+                  while IFS= read -r path; do
+                    case "$path" in
+                      manifest.json | versions.json) ;;
+                      *)
+                        echo "Unexpected tracked output: $path"
+                        exit 1
+                        ;;
+                    esac
+                  done <<EOF
+                  $CHANGED_PATHS
+                  EOF
 
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
                   git add manifest.json versions.json
                   git commit -m "chore: sync release metadata"
-                  git push origin HEAD:"$BRANCH"
+                  echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+            - name: Generate GitHub App token for push
+              id: app-token
+              if: ${{ steps.sync-version-metadata.outputs.has_changes == 'true' }}
+              uses: actions/create-github-app-token@v2
+              with:
+                  app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+                  private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+                  permission-contents: write
+
+            - name: Push validated version metadata changes
+              if: ${{ steps.sync-version-metadata.outputs.has_changes == 'true' }}
+              env:
+                  BRANCH: ${{ github.event.pull_request.head.ref }}
+                  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+                  PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+              run: |
+                  set -euo pipefail
+
+                  REMOTE_HEAD="$(git -c http.extraheader="AUTHORIZATION: bearer $PUSH_TOKEN" ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+                  if [ "$REMOTE_HEAD" != "$HEAD_SHA" ]; then
+                    echo "Remote branch changed after this event; refusing to push."
+                    exit 1
+                  fi
+
+                  git -c http.extraheader="AUTHORIZATION: bearer $PUSH_TOKEN" push HEAD:"$BRANCH"
