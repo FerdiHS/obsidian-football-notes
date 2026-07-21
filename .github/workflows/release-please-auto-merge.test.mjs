@@ -1,8 +1,34 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const workflowPath = new URL('./release-please-auto-merge.yml', import.meta.url);
+
+function extractCheckSummaryFilter(workflow) {
+	const filter = workflow.match(
+		/CHECK_SUMMARY="\$\(jq -r --arg ORCHESTRATION_CHECK_NAME "\$ORCHESTRATION_CHECK_NAME" '(.+)' <<< "\$PR_JSON"\)"/,
+	)?.[1];
+
+	assert.ok(filter, 'The workflow must run jq against the PR check rollup.');
+	return filter;
+}
+
+function runCheckSummaryFilter(filter, fixture) {
+	return execFileSync(
+		'jq',
+		[
+			'-r',
+			'--arg',
+			'ORCHESTRATION_CHECK_NAME',
+			'Release Please Approval Gate / Release Please Merge Orchestration',
+			filter,
+		],
+		{ encoding: 'utf8', input: JSON.stringify(fixture) },
+	)
+		.trim()
+		.split('\t');
+}
 
 test('release merge workflow excludes its exact orchestration check from both check counts', async () => {
 	const workflow = await readFile(workflowPath, 'utf8');
@@ -20,8 +46,54 @@ test('release merge workflow excludes its exact orchestration check from both ch
 	);
 	assert.match(
 		workflow,
-		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and !\(\(\.conclusion == "SUCCESS"\) or \(\.state == "SUCCESS"\)\)\)\]\s*\|\s*length\)/,
+		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and \(\(\(\.conclusion == "SUCCESS"\) or \(\.state == "SUCCESS"\)\) \| not\)\)\]\s*\|\s*length\)/,
 	);
+});
+
+test('release merge workflow executes its jq filter for every external check state', async () => {
+	const filter = extractCheckSummaryFilter(await readFile(workflowPath, 'utf8'));
+	const baseFixture = {
+		baseRefName: 'main',
+		headRefOid: 'head',
+		isDraft: false,
+	};
+
+	for (const { name, statusCheckRollup, expected } of [
+		{
+			name: 'successful CheckRun and StatusContext',
+			statusCheckRollup: [
+				{ conclusion: 'SUCCESS', name: 'build' },
+				{ context: 'legacy-ci', state: 'SUCCESS' },
+			],
+			expected: ['head', 'main', 'false', '2', '0'],
+		},
+		{
+			name: 'pending CheckRun',
+			statusCheckRollup: [{ name: 'build', state: 'IN_PROGRESS' }],
+			expected: ['head', 'main', 'false', '1', '1'],
+		},
+		{
+			name: 'failed StatusContext',
+			statusCheckRollup: [{ context: 'legacy-ci', state: 'FAILURE' }],
+			expected: ['head', 'main', 'false', '1', '1'],
+		},
+		{
+			name: 'skipped CheckRun',
+			statusCheckRollup: [{ conclusion: 'SKIPPED', name: 'build' }],
+			expected: ['head', 'main', 'false', '1', '1'],
+		},
+		{
+			name: 'empty rollup',
+			statusCheckRollup: [],
+			expected: ['head', 'main', 'false', '0', '0'],
+		},
+	]) {
+		assert.deepEqual(
+			runCheckSummaryFilter(filter, { ...baseFixture, statusCheckRollup }),
+			expected,
+			name,
+		);
+	}
 });
 
 test('release merge workflow uses exact-head label-triggered merging', async () => {
