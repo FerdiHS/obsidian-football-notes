@@ -89,6 +89,7 @@ jobs:
                   PR_AUTHOR: ${{ github.event.pull_request.user.login }}
                   APP_SLUG: ${{ vars.RELEASE_PLEASE_APP_SLUG }}
                   ORCHESTRATION_CHECK_NAME: Release Please Merge Orchestration
+                  INVALIDATION_CHECK_NAME: Release Please Approval Invalidation
               run: |
                   set -euo pipefail
 
@@ -113,9 +114,9 @@ jobs:
                   PR_JSON="$(gh pr view "$PR_URL" --json baseRefName,headRefOid,isDraft,statusCheckRollup)" || \
                     fail_validation "Release approval could not validate the PR. I removed the label; reapply it after fixing the issue."
 
-                  CHECK_SUMMARY="$(jq -r --arg ORCHESTRATION_CHECK_NAME "$ORCHESTRATION_CHECK_NAME" '[.headRefOid, .baseRefName, (.isDraft | tostring), ([.statusCheckRollup[] | select(.name != $ORCHESTRATION_CHECK_NAME and .context != $ORCHESTRATION_CHECK_NAME)] | length), ([.statusCheckRollup[] | select(.name != $ORCHESTRATION_CHECK_NAME and .context != $ORCHESTRATION_CHECK_NAME and (((.conclusion == "SUCCESS") or (.state == "SUCCESS")) | not))] | length)] | @tsv' <<< "$PR_JSON")" || \
+                  CHECK_SUMMARY="$(jq -r --arg ORCHESTRATION_CHECK_NAME "$ORCHESTRATION_CHECK_NAME" --arg INVALIDATION_CHECK_NAME "$INVALIDATION_CHECK_NAME" '[.headRefOid, .baseRefName, (.isDraft | tostring), ([.statusCheckRollup[] | select(.name != $ORCHESTRATION_CHECK_NAME and .context != $ORCHESTRATION_CHECK_NAME and .name != $INVALIDATION_CHECK_NAME and .context != $INVALIDATION_CHECK_NAME)] | length), ([.statusCheckRollup[] | select(.name != $ORCHESTRATION_CHECK_NAME and .context != $ORCHESTRATION_CHECK_NAME and .name != $INVALIDATION_CHECK_NAME and .context != $INVALIDATION_CHECK_NAME and (((.conclusion == "SUCCESS") or (.state == "SUCCESS")) | not))] | length)] | @tsv' <<< "$PR_JSON")" || \
                     fail_validation "Release approval could not read PR checks. I removed the label; reapply it after fixing the issue."
-                  read -r PR_HEAD_SHA PR_BASE PR_DRAFT CHECK_COUNT FAILED_CHECKS <<< "$CHECK_SUMMARY"
+                  read -r PR_HEAD_SHA PR_BASE PR_DRAFT EXTERNAL_CHECK_COUNT FAILED_EXTERNAL_CHECKS <<< "$CHECK_SUMMARY"
 
                   if [ "$PR_BASE" != "main" ]; then
                     fail_validation "Release approval rejected: the PR no longer targets main. I removed the label."
@@ -129,8 +130,8 @@ jobs:
                     fail_validation "Release approval rejected: the label is stale for the current commit. I removed the label."
                   fi
 
-                  if [ "$CHECK_COUNT" -eq 0 ] || [ "$FAILED_CHECKS" -ne 0 ]; then
-                    fail_validation "Release approval blocked: every status check must report SUCCESS. I removed the label; reapply it after all checks pass."
+                  if [ "$EXTERNAL_CHECK_COUNT" -eq 0 ] || [ "$FAILED_EXTERNAL_CHECKS" -ne 0 ]; then
+                    fail_validation "Release approval blocked: at least one external status check must report SUCCESS, and every external status check must be successful. I removed the label; reapply it after all checks pass."
                   fi
 
                   if ! gh pr merge --squash --delete-branch --match-head-commit "$PR_HEAD_SHA" "$PR_URL"; then
