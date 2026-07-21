@@ -104,12 +104,11 @@ test('release merge workflow excludes both Approval Gate checks from external ch
 	assert.match(workflow, new RegExp(`INVALIDATION_CHECK_NAME: ${invalidationCheckName}`));
 	assert.match(
 		workflow,
-		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and \.context != \$ORCHESTRATION_CHECK_NAME and \.name != \$INVALIDATION_CHECK_NAME and \.context != \$INVALIDATION_CHECK_NAME\)\]\s*\|\s*length\)/,
+		/statusCheckRollup.*\.name != \$ORCHESTRATION_CHECK_NAME.*\.context != \$INVALIDATION_CHECK_NAME/s,
 	);
-	assert.match(
-		workflow,
-		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and \.context != \$ORCHESTRATION_CHECK_NAME and \.name != \$INVALIDATION_CHECK_NAME and \.context != \$INVALIDATION_CHECK_NAME and \(\(\(\.conclusion == "SUCCESS"\) or \(\.state == "SUCCESS"\)\) \| not\)\)\]\s*\|\s*length\)/,
-	);
+	assert.match(workflow, /\.conclusion == "SUCCESS".*\.state == "SUCCESS"/s);
+	assert.match(workflow, /build \(20\.x\)/);
+	assert.match(workflow, /build \(22\.x\)/);
 });
 
 test('release merge workflow executes its jq filter for internal-only and external check states', async (t) => {
@@ -131,37 +130,37 @@ test('release merge workflow executes its jq filter for internal-only and extern
 				{ name: orchestrationCheckName, state: 'IN_PROGRESS' },
 				{ conclusion: 'SUCCESS', name: invalidationCheckName },
 			],
-			expected: ['head', 'main', 'false', '0', '0'],
+			expected: ['head', 'main', 'false', '0', '0', '2'],
 		},
 		{
 			name: 'successful external CheckRun',
 			statusCheckRollup: [{ conclusion: 'SUCCESS', name: 'build' }],
-			expected: ['head', 'main', 'false', '1', '0'],
+			expected: ['head', 'main', 'false', '1', '0', '2'],
 		},
 		{
 			name: 'successful external StatusContext',
 			statusCheckRollup: [{ context: 'legacy-ci', state: 'SUCCESS' }],
-			expected: ['head', 'main', 'false', '1', '0'],
+			expected: ['head', 'main', 'false', '1', '0', '2'],
 		},
 		{
 			name: 'pending CheckRun',
 			statusCheckRollup: [{ name: 'build', state: 'IN_PROGRESS' }],
-			expected: ['head', 'main', 'false', '1', '1'],
+			expected: ['head', 'main', 'false', '1', '1', '2'],
 		},
 		{
 			name: 'failed StatusContext',
 			statusCheckRollup: [{ context: 'legacy-ci', state: 'FAILURE' }],
-			expected: ['head', 'main', 'false', '1', '1'],
+			expected: ['head', 'main', 'false', '1', '1', '2'],
 		},
 		{
 			name: 'skipped CheckRun',
 			statusCheckRollup: [{ conclusion: 'SKIPPED', name: 'build' }],
-			expected: ['head', 'main', 'false', '1', '1'],
+			expected: ['head', 'main', 'false', '1', '1', '2'],
 		},
 		{
 			name: 'empty rollup',
 			statusCheckRollup: [],
-			expected: ['head', 'main', 'false', '0', '0'],
+			expected: ['head', 'main', 'false', '0', '0', '2'],
 		},
 	]) {
 		assert.deepEqual(
@@ -173,6 +172,24 @@ test('release merge workflow executes its jq filter for internal-only and extern
 			name,
 		);
 	}
+});
+
+test('release merge workflow blocks when the expected CI matrix checks are absent', async (t) => {
+	const workflow = await readFile(workflowPath, 'utf8');
+	const filter = extractCheckSummaryFilter(workflow);
+	const orchestrationCheckName = extractMergeJobName(workflow);
+	const invalidationCheckName = extractInvalidationJobName(workflow);
+	if (skipUnavailableExecutableFixture(t, ['jq'])) return;
+
+	assert.deepEqual(
+		runCheckSummaryFilter(filter, orchestrationCheckName, invalidationCheckName, {
+			baseRefName: 'main',
+			headRefOid: 'head',
+			isDraft: false,
+			statusCheckRollup: [{ conclusion: 'SUCCESS', name: 'unrelated-check' }],
+		}),
+		['head', 'main', 'false', '1', '0', '2'],
+	);
 });
 
 test('release merge workflow waits for a successful invalidation sibling and excludes both Approval Gate checks', async (t) => {
@@ -202,8 +219,8 @@ test('release merge workflow waits for a successful invalidation sibling and exc
 	};
 	const successfulRollup = [
 		{ name: orchestrationCheckName, state: 'IN_PROGRESS' },
-		{ conclusion: 'SUCCESS', name: 'build' },
-		{ context: 'legacy-ci', state: 'SUCCESS' },
+		{ conclusion: 'SUCCESS', name: 'build (20.x)' },
+		{ context: 'build (22.x)', state: 'SUCCESS' },
 		{ conclusion: 'SUCCESS', name: invalidationCheckName },
 	];
 
@@ -212,18 +229,18 @@ test('release merge workflow waits for a successful invalidation sibling and exc
 			...baseFixture,
 			statusCheckRollup: successfulRollup,
 		}),
-		['head', 'main', 'false', '2', '0'],
+		['head', 'main', 'false', '2', '0', '0'],
 	);
 	assert.deepEqual(
 		runCheckSummaryFilter(filter, orchestrationCheckName, invalidationCheckName, {
 			...baseFixture,
 			statusCheckRollup: [
 				...successfulRollup.slice(0, 1),
-				{ conclusion: 'FAILURE', name: 'build' },
+				{ conclusion: 'FAILURE', name: 'build (20.x)' },
 				...successfulRollup.slice(2),
 			],
 		}),
-		['head', 'main', 'false', '2', '1'],
+		['head', 'main', 'false', '2', '1', '1'],
 	);
 });
 
