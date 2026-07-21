@@ -21,6 +21,41 @@ function extractMergeJobName(workflow) {
 	return jobName;
 }
 
+function extractFailValidationHandler(workflow) {
+	const handler = workflow.match(/^\s{18}fail_validation\(\) \{\n[\s\S]*?^\s{18}\}/m)?.[0];
+
+	assert.ok(handler, 'The workflow must define its validation cleanup handler.');
+	return handler.replace(/^\s{18}/gm, '');
+}
+
+function runFailValidationHandler(handler, editExitCode, commentExitCode) {
+	const script = `
+set -euo pipefail
+gh() {
+  printf '%s\\n' "$2"
+  if [ "$2" = edit ]; then
+    return "${editExitCode}"
+  fi
+  return "${commentExitCode}"
+}
+PR_URL=https://example.test/release
+${handler}
+fail_validation 'validation failed'
+`;
+
+	try {
+		return {
+			calls: execFileSync('bash', ['-c', script], { encoding: 'utf8' }).trim().split('\n'),
+			status: 0,
+		};
+	} catch (error) {
+		return {
+			calls: error.stdout.toString().trim().split('\n'),
+			status: error.status,
+		};
+	}
+}
+
 function runCheckSummaryFilter(filter, orchestrationCheckName, fixture) {
 	return execFileSync(
 		'jq',
@@ -144,6 +179,21 @@ test('release merge workflow waits for a successful invalidation sibling and ign
 		}),
 		['head', 'main', 'false', '3', '1'],
 	);
+});
+
+test('release merge workflow reports validation-cleanup failures after attempting both operations', async () => {
+	const handler = extractFailValidationHandler(await readFile(workflowPath, 'utf8'));
+
+	for (const { editExitCode, commentExitCode, status } of [
+		{ commentExitCode: 0, editExitCode: 0, status: 0 },
+		{ commentExitCode: 0, editExitCode: 1, status: 1 },
+		{ commentExitCode: 1, editExitCode: 0, status: 1 },
+	]) {
+		assert.deepEqual(runFailValidationHandler(handler, editExitCode, commentExitCode), {
+			calls: ['edit', 'comment'],
+			status,
+		});
+	}
 });
 
 test('release merge workflow uses exact-head label-triggered merging', async () => {

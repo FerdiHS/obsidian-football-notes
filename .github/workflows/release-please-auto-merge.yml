@@ -93,8 +93,12 @@ jobs:
                   set -euo pipefail
 
                   fail_validation() {
-                    gh pr edit "$PR_URL" --remove-label "release: ready" || true
-                    gh pr comment "$PR_URL" --body "$1" || true
+                    cleanup_failed=0
+                    gh pr edit "$PR_URL" --remove-label "release: ready" || cleanup_failed=1
+                    gh pr comment "$PR_URL" --body "$1" || cleanup_failed=1
+                    if [ "$cleanup_failed" -ne 0 ]; then
+                      exit 1
+                    fi
                     exit 0
                   }
 
