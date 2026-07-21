@@ -48,6 +48,7 @@ jobs:
                   gh pr edit "$PR_URL" --remove-label "release: ready"
 
     merge-release:
+        name: Release Please Merge Orchestration
         if: >
             github.event.pull_request.base.ref == 'main' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
@@ -78,6 +79,7 @@ jobs:
                   PR_LABELER: ${{ github.actor }}
                   PR_AUTHOR: ${{ github.event.pull_request.user.login }}
                   APP_SLUG: ${{ vars.RELEASE_PLEASE_APP_SLUG }}
+                  ORCHESTRATION_CHECK_NAME: Release Please Approval Gate / Release Please Merge Orchestration
               run: |
                   set -euo pipefail
 
@@ -88,19 +90,23 @@ jobs:
                   }
 
                   if [ "$PR_LABELER" != "FerdiHS" ]; then
-                    fail_validation "Release approval rejected: only @FerdiHS can apply \\`release: ready\\`. I removed the label."
+                    fail_validation 'Release approval rejected: only @FerdiHS can apply `release: ready`. I removed the label.'
                   fi
 
                   if [ "$PR_AUTHOR" != "${APP_SLUG}[bot]" ]; then
                     fail_validation "Release approval rejected: this PR is not authored by the Release Please App. I removed the label."
                   fi
 
-                  PR_JSON="$(gh pr view "$PR_URL" --json headRefOid,isDraft,statusCheckRollup)" || \
+                  PR_JSON="$(gh pr view "$PR_URL" --json baseRefName,headRefOid,isDraft,statusCheckRollup)" || \
                     fail_validation "Release approval could not validate the PR. I removed the label; reapply it after fixing the issue."
 
-                  CHECK_SUMMARY="$(jq -r '[.headRefOid, (.isDraft | tostring), (.statusCheckRollup | length), ([.statusCheckRollup[] | select(!((.conclusion == "SUCCESS") or (.state == "SUCCESS")))] | length)] | @tsv' <<< "$PR_JSON")" || \
+                  CHECK_SUMMARY="$(jq -r --arg ORCHESTRATION_CHECK_NAME "$ORCHESTRATION_CHECK_NAME" '[.headRefOid, .baseRefName, (.isDraft | tostring), ([.statusCheckRollup[] | select(.name != $ORCHESTRATION_CHECK_NAME)] | length), ([.statusCheckRollup[] | select(.name != $ORCHESTRATION_CHECK_NAME and !((.conclusion == "SUCCESS") or (.state == "SUCCESS")))] | length)] | @tsv' <<< "$PR_JSON")" || \
                     fail_validation "Release approval could not read PR checks. I removed the label; reapply it after fixing the issue."
-                  read -r PR_HEAD_SHA PR_DRAFT CHECK_COUNT FAILED_CHECKS <<< "$CHECK_SUMMARY"
+                  read -r PR_HEAD_SHA PR_BASE PR_DRAFT CHECK_COUNT FAILED_CHECKS <<< "$CHECK_SUMMARY"
+
+                  if [ "$PR_BASE" != "main" ]; then
+                    fail_validation "Release approval rejected: the PR no longer targets main. I removed the label."
+                  fi
 
                   if [ "$PR_DRAFT" = "true" ]; then
                     fail_validation "Release approval rejected: the PR is still a draft. I removed the label."
@@ -117,4 +123,5 @@ jobs:
                   if ! gh pr merge --squash --delete-branch --match-head-commit "$PR_HEAD_SHA" "$PR_URL"; then
                     gh pr edit "$PR_URL" --remove-label "release: ready" || true
                     gh pr comment "$PR_URL" --body "Release merge failed for the validated commit. I removed the label; reapply it after fixing the issue." || true
+                    exit 1
                   fi
