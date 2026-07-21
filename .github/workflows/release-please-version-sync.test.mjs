@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -10,6 +10,20 @@ const workflow = await readFile(
 	new URL('./release-please-version-sync.yml', import.meta.url),
 	'utf8',
 );
+
+function skipUnavailableExecutableFixture(t, requiredBinaries) {
+	const missingBinaries = requiredBinaries.filter((binary) => {
+		const result = spawnSync(binary, ['--version'], { stdio: 'ignore' });
+		return result.error !== undefined || result.status !== 0;
+	});
+
+	if (missingBinaries.length === 0) return false;
+
+	t.skip(
+		`Skipping executable fixture: required binary unavailable: ${missingBinaries.join(', ')}`,
+	);
+	return true;
+}
 
 function assertAppearsBefore(earlier, later) {
 	const earlierIndex = workflow.indexOf(earlier);
@@ -110,8 +124,9 @@ test('prints and validates unstaged and staged allowed tracked diffs before comm
 	assertAppearsBefore('git diff --cached --check', '- name: Generate GitHub App token for push');
 });
 
-test('staged-output fixture prints staged output and rejects staged whitespace errors', () => {
+test('staged-output fixture prints staged output and rejects staged whitespace errors', (t) => {
 	const commands = extractTrackedDiffValidationCommands(workflow);
+	if (skipUnavailableExecutableFixture(t, ['bash', 'git'])) return;
 	const cleanDirectory = createStagedDiffFixture('{"version":"0.2.1"}\n');
 	const invalidDirectory = createStagedDiffFixture('{"version":"0.2.1"}  \n');
 

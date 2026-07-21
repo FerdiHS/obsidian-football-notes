@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const workflowPath = new URL('./release-please-auto-merge.yml', import.meta.url);
+
+function skipUnavailableExecutableFixture(t, requiredBinaries) {
+	const missingBinaries = requiredBinaries.filter((binary) => {
+		const result = spawnSync(binary, ['--version'], { stdio: 'ignore' });
+		return result.error !== undefined || result.status !== 0;
+	});
+
+	if (missingBinaries.length === 0) return false;
+
+	t.skip(
+		`Skipping executable fixture: required binary unavailable: ${missingBinaries.join(', ')}`,
+	);
+	return true;
+}
 
 function extractCheckSummaryFilter(workflow) {
 	const filter = workflow.match(
@@ -98,11 +112,12 @@ test('release merge workflow excludes both Approval Gate checks from external ch
 	);
 });
 
-test('release merge workflow executes its jq filter for internal-only and external check states', async () => {
+test('release merge workflow executes its jq filter for internal-only and external check states', async (t) => {
 	const workflow = await readFile(workflowPath, 'utf8');
 	const filter = extractCheckSummaryFilter(workflow);
 	const orchestrationCheckName = extractMergeJobName(workflow);
 	const invalidationCheckName = extractInvalidationJobName(workflow);
+	if (skipUnavailableExecutableFixture(t, ['jq'])) return;
 	const baseFixture = {
 		baseRefName: 'main',
 		headRefOid: 'head',
@@ -160,7 +175,7 @@ test('release merge workflow executes its jq filter for internal-only and extern
 	}
 });
 
-test('release merge workflow waits for a successful invalidation sibling and excludes both Approval Gate checks', async () => {
+test('release merge workflow waits for a successful invalidation sibling and excludes both Approval Gate checks', async (t) => {
 	const workflow = await readFile(workflowPath, 'utf8');
 	const filter = extractCheckSummaryFilter(workflow);
 	const orchestrationCheckName = extractMergeJobName(workflow);
@@ -178,6 +193,7 @@ test('release merge workflow waits for a successful invalidation sibling and exc
 		workflow,
 		/Remove stale approval label\n\s{14}if: >\n\s{18}\(\n\s{22}github\.event\.action == 'synchronize' \|\|\n\s{22}github\.event\.action == 'converted_to_draft'/,
 	);
+	if (skipUnavailableExecutableFixture(t, ['jq'])) return;
 
 	const baseFixture = {
 		baseRefName: 'main',
@@ -211,7 +227,8 @@ test('release merge workflow waits for a successful invalidation sibling and exc
 	);
 });
 
-test('release merge workflow reports validation-cleanup failures after attempting both operations', async () => {
+test('release merge workflow reports validation-cleanup failures after attempting both operations', async (t) => {
+	if (skipUnavailableExecutableFixture(t, ['bash'])) return;
 	const handler = extractFailValidationHandler(await readFile(workflowPath, 'utf8'));
 
 	for (const { editExitCode, commentExitCode, status } of [
