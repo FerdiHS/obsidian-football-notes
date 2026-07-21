@@ -7,6 +7,15 @@ const workflow = await readFile(
 	'utf8',
 );
 
+function assertAppearsBefore(earlier, later) {
+	const earlierIndex = workflow.indexOf(earlier);
+	const laterIndex = workflow.indexOf(later);
+
+	assert.notEqual(earlierIndex, -1, `Missing required workflow content: ${earlier}`);
+	assert.notEqual(laterIndex, -1, `Missing required workflow content: ${later}`);
+	assert.ok(earlierIndex < laterIndex, `${earlier} must appear before ${later}`);
+}
+
 test('runs the release metadata synchronizer only from trusted immutable code', () => {
 	assert.match(workflow, /vars\.RELEASE_PLEASE_APP_SLUG/);
 	assert.match(workflow, /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
@@ -26,4 +35,21 @@ test('runs the release metadata synchronizer only from trusted immutable code', 
 	assert.doesNotMatch(workflow, /npm run version:(sync|check)/);
 	assert.doesNotMatch(workflow, /--force(?:-with-lease)?/);
 	assert.match(workflow, /steps\.sync-version-metadata\.outputs\.has_changes == 'true'/);
+
+	const appTokenStep = '- name: Generate GitHub App token for push';
+	assertAppearsBefore('- uses: actions/checkout@v4', appTokenStep);
+	assertAppearsBefore('node "$TRUSTED_SCRIPT" sync', appTokenStep);
+	assertAppearsBefore('node "$TRUSTED_SCRIPT" check', appTokenStep);
+	assertAppearsBefore('UNTRACKED_PATHS=', appTokenStep);
+	assertAppearsBefore('CHANGED_PATHS=', appTokenStep);
+	assertAppearsBefore('git commit -m "chore: sync release metadata"', appTokenStep);
+
+	const allowlist = workflow.match(/case "\$path" in\s+([^)]*)\) ;;/)?.[1];
+	assert.deepEqual(allowlist?.trim().split(/\s*\|\s*/), ['manifest.json', 'versions.json']);
+
+	const pushCommands = [...workflow.matchAll(/^\s*git .* push\b.*$/gm)];
+	assert.equal(pushCommands.length, 1);
+	assert.match(pushCommands[0][0], /push HEAD:"\$BRANCH"$/);
+	assertAppearsBefore('ls-remote origin "refs/heads/$BRANCH"', pushCommands[0][0].trim());
+	assert.doesNotMatch(pushCommands[0][0], /--force(?:-with-lease)?/);
 });
