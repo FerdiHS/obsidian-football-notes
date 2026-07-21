@@ -102,6 +102,9 @@ jobs:
                   $CHANGED_PATHS
                   EOF
 
+                  git diff --no-ext-diff
+                  git diff --check
+
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
                   git add manifest.json versions.json

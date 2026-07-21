@@ -53,3 +53,15 @@ test('runs the release metadata synchronizer only from trusted immutable code', 
 	assertAppearsBefore('ls-remote origin "refs/heads/$BRANCH"', pushCommands[0][0].trim());
 	assert.doesNotMatch(pushCommands[0][0], /--force(?:-with-lease)?/);
 });
+
+test('prints and validates the complete allowed tracked diff before commit or token generation', () => {
+	assert.match(workflow, /git diff --no-ext-diff/);
+	assert.match(workflow, /git diff --check/);
+
+	assertAppearsBefore('node "$TRUSTED_SCRIPT" sync', 'git diff --no-ext-diff');
+	assertAppearsBefore('node "$TRUSTED_SCRIPT" check', 'git diff --no-ext-diff');
+	assertAppearsBefore('case "$path" in', 'git diff --no-ext-diff');
+	assertAppearsBefore('git diff --no-ext-diff', 'git diff --check');
+	assertAppearsBefore('git diff --check', 'git commit -m "chore: sync release metadata"');
+	assertAppearsBefore('git diff --check', '- name: Generate GitHub App token for push');
+});
