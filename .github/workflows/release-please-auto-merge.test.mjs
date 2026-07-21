@@ -4,6 +4,26 @@ import test from 'node:test';
 
 const workflowPath = new URL('./release-please-auto-merge.yml', import.meta.url);
 
+test('release merge workflow excludes its exact orchestration check from both check counts', async () => {
+	const workflow = await readFile(workflowPath, 'utf8');
+	const workflowName = workflow.match(/^name:[ ](.+)$/m)?.[1];
+	const jobName = workflow.match(/^\s{4}merge-release:\n\s{8}name:[ ](.+)$/m)?.[1];
+
+	assert.ok(workflowName);
+	assert.ok(jobName);
+
+	const orchestrationCheckName = `${workflowName} / ${jobName}`;
+	assert.match(workflow, new RegExp(`ORCHESTRATION_CHECK_NAME: ${orchestrationCheckName}`));
+	assert.match(
+		workflow,
+		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME\)\]\s*\|\s*length\)/,
+	);
+	assert.match(
+		workflow,
+		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and !\(\(\.conclusion == "SUCCESS"\) or \(\.state == "SUCCESS"\)\)\)\]\s*\|\s*length\)/,
+	);
+});
+
 test('release merge workflow uses exact-head label-triggered merging', async () => {
 	const workflow = await readFile(workflowPath, 'utf8');
 
