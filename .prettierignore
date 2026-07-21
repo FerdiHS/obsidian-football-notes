@@ -3,6 +3,5 @@ node_modules
 .husky/_
 package-lock.json
 .agents/
-.superpowers
 AGENTS.md
 CHANGELOG.md

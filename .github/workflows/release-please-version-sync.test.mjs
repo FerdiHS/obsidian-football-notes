@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { env } from 'node:process';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -102,6 +103,44 @@ test('runs the release metadata synchronizer only from trusted immutable code', 
 	assert.match(pushCommands[0][0], /push HEAD:"\$BRANCH"$/);
 	assertAppearsBefore('ls-remote origin "refs/heads/$BRANCH"', pushCommands[0][0].trim());
 	assert.doesNotMatch(pushCommands[0][0], /--force(?:-with-lease)?/);
+});
+
+test('executes the trusted ESM synchronizer through its temporary file', (t) => {
+	if (skipUnavailableExecutableFixture(t, ['bash', 'node'])) return;
+
+	const trustedScriptCommand = workflow.match(
+		/^\s*(TRUSTED_SCRIPT="\$\(mktemp "\$RUNNER_TEMP\/trusted-version-bump\.XXXXXX\.mjs"\)")$/m,
+	)?.[1];
+	assert.ok(trustedScriptCommand, 'The workflow must create a temporary trusted script.');
+
+	const directory = mkdtempSync(join(tmpdir(), 'release-please-trusted-script-'));
+	try {
+		for (const file of ['package.json', 'manifest.json', 'versions.json']) {
+			writeFileSync(join(directory, file), readFileSync(file));
+		}
+		writeFileSync(join(directory, 'version-bump.mjs'), readFileSync('version-bump.mjs'));
+
+		assert.doesNotThrow(() =>
+			execFileSync(
+				'bash',
+				[
+					'-c',
+					`set -euo pipefail\n${trustedScriptCommand}\ncp version-bump.mjs "$TRUSTED_SCRIPT"\nnode "$TRUSTED_SCRIPT" sync\nnode "$TRUSTED_SCRIPT" check`,
+				],
+				{
+					cwd: directory,
+					encoding: 'utf8',
+					env: {
+						...env,
+						GITHUB_HEAD_REF: 'release-please--branches--main',
+						RUNNER_TEMP: directory,
+					},
+				},
+			),
+		);
+	} finally {
+		rmSync(directory, { force: true, recursive: true });
+	}
 });
 
 test('prints and validates unstaged and staged allowed tracked diffs before commit or token generation', () => {

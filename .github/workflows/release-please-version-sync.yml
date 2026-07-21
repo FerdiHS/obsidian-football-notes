@@ -58,7 +58,7 @@ jobs:
                   git rev-parse --verify "${BASE_SHA}^{commit}" >/dev/null
                   git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA"
 
-                  TRUSTED_SCRIPT="$(mktemp)"
+                  TRUSTED_SCRIPT="$(mktemp "$RUNNER_TEMP/trusted-version-bump.XXXXXX.mjs")"
                   trap 'rm -f "$TRUSTED_SCRIPT"' EXIT
                   git show "${BASE_SHA}:version-bump.mjs" > "$TRUSTED_SCRIPT"
 
