@@ -14,16 +14,17 @@ function extractCheckSummaryFilter(workflow) {
 	return filter;
 }
 
-function runCheckSummaryFilter(filter, fixture) {
+function extractMergeJobName(workflow) {
+	const jobName = workflow.match(/^\s{4}merge-release:\n\s{8}name:[ ](.+)$/m)?.[1];
+
+	assert.ok(jobName, 'The merge job must have an exact check name.');
+	return jobName;
+}
+
+function runCheckSummaryFilter(filter, orchestrationCheckName, fixture) {
 	return execFileSync(
 		'jq',
-		[
-			'-r',
-			'--arg',
-			'ORCHESTRATION_CHECK_NAME',
-			'Release Please Approval Gate / Release Please Merge Orchestration',
-			filter,
-		],
+		['-r', '--arg', 'ORCHESTRATION_CHECK_NAME', orchestrationCheckName, filter],
 		{ encoding: 'utf8', input: JSON.stringify(fixture) },
 	)
 		.trim()
@@ -32,26 +33,22 @@ function runCheckSummaryFilter(filter, fixture) {
 
 test('release merge workflow excludes its exact orchestration check from both check counts', async () => {
 	const workflow = await readFile(workflowPath, 'utf8');
-	const workflowName = workflow.match(/^name:[ ](.+)$/m)?.[1];
-	const jobName = workflow.match(/^\s{4}merge-release:\n\s{8}name:[ ](.+)$/m)?.[1];
-
-	assert.ok(workflowName);
-	assert.ok(jobName);
-
-	const orchestrationCheckName = `${workflowName} / ${jobName}`;
+	const orchestrationCheckName = extractMergeJobName(workflow);
 	assert.match(workflow, new RegExp(`ORCHESTRATION_CHECK_NAME: ${orchestrationCheckName}`));
 	assert.match(
 		workflow,
-		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME\)\]\s*\|\s*length\)/,
+		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and \.context != \$ORCHESTRATION_CHECK_NAME\)\]\s*\|\s*length\)/,
 	);
 	assert.match(
 		workflow,
-		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and \(\(\(\.conclusion == "SUCCESS"\) or \(\.state == "SUCCESS"\)\) \| not\)\)\]\s*\|\s*length\)/,
+		/\(\[\.statusCheckRollup\[\]\s*\|\s*select\(\.name != \$ORCHESTRATION_CHECK_NAME and \.context != \$ORCHESTRATION_CHECK_NAME and \(\(\(\.conclusion == "SUCCESS"\) or \(\.state == "SUCCESS"\)\) \| not\)\)\]\s*\|\s*length\)/,
 	);
 });
 
 test('release merge workflow executes its jq filter for every external check state', async () => {
-	const filter = extractCheckSummaryFilter(await readFile(workflowPath, 'utf8'));
+	const workflow = await readFile(workflowPath, 'utf8');
+	const filter = extractCheckSummaryFilter(workflow);
+	const orchestrationCheckName = extractMergeJobName(workflow);
 	const baseFixture = {
 		baseRefName: 'main',
 		headRefOid: 'head',
@@ -89,11 +86,64 @@ test('release merge workflow executes its jq filter for every external check sta
 		},
 	]) {
 		assert.deepEqual(
-			runCheckSummaryFilter(filter, { ...baseFixture, statusCheckRollup }),
+			runCheckSummaryFilter(filter, orchestrationCheckName, {
+				...baseFixture,
+				statusCheckRollup,
+			}),
 			expected,
 			name,
 		);
 	}
+});
+
+test('release merge workflow waits for a successful invalidation sibling and ignores only itself', async () => {
+	const workflow = await readFile(workflowPath, 'utf8');
+	const filter = extractCheckSummaryFilter(workflow);
+	const orchestrationCheckName = extractMergeJobName(workflow);
+
+	assert.match(
+		workflow,
+		/invalidate-stale-approval:\n\s{8}name: Release Please Approval Invalidation/,
+	);
+	assert.match(
+		workflow,
+		/merge-release:\n\s{8}name: Release Please Merge Orchestration\n\s{8}needs: invalidate-stale-approval/,
+	);
+	assert.match(
+		workflow,
+		/Remove stale approval label\n\s{14}if: >\n\s{18}\(\n\s{22}github\.event\.action == 'synchronize' \|\|\n\s{22}github\.event\.action == 'converted_to_draft'/,
+	);
+
+	const baseFixture = {
+		baseRefName: 'main',
+		headRefOid: 'head',
+		isDraft: false,
+	};
+	const successfulRollup = [
+		{ name: orchestrationCheckName, state: 'IN_PROGRESS' },
+		{ conclusion: 'SUCCESS', name: 'build' },
+		{ context: 'legacy-ci', state: 'SUCCESS' },
+		{ conclusion: 'SUCCESS', name: 'Release Please Approval Invalidation' },
+	];
+
+	assert.deepEqual(
+		runCheckSummaryFilter(filter, orchestrationCheckName, {
+			...baseFixture,
+			statusCheckRollup: successfulRollup,
+		}),
+		['head', 'main', 'false', '3', '0'],
+	);
+	assert.deepEqual(
+		runCheckSummaryFilter(filter, orchestrationCheckName, {
+			...baseFixture,
+			statusCheckRollup: [
+				...successfulRollup.slice(0, 1),
+				{ conclusion: 'FAILURE', name: 'build' },
+				...successfulRollup.slice(2),
+			],
+		}),
+		['head', 'main', 'false', '3', '1'],
+	);
 });
 
 test('release merge workflow uses exact-head label-triggered merging', async () => {
