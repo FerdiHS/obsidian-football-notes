@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -58,7 +58,11 @@ test('launcher returns non-zero when a discovered test fails', () => {
 			}),
 		);
 		writeFixture(root, 'node_modules/jiti/register.mjs', 'export {};');
-		writeFixture(root, 'pass.test.mjs', "import test from 'node:test'; test('pass', () => {});");
+		writeFixture(
+			root,
+			'pass.test.mjs',
+			"import test from 'node:test'; test('pass', () => {});",
+		);
 		writeFixture(
 			root,
 			'fail.test.mjs',
@@ -80,7 +84,11 @@ test('launcher returns non-zero when a discovered test fails', () => {
 test('run preserves the exact child test command and inherits stdio', () => {
 	const root = mkdtempSync(join(tmpdir(), 'football-notes-test-runner-'));
 	try {
-		writeFixture(root, 'nested/sample.test.ts', "import test from 'node:test'; test('ok', () => {});");
+		writeFixture(
+			root,
+			'nested/sample.test.ts',
+			"import test from 'node:test'; test('ok', () => {});",
+		);
 
 		const calls = [];
 		const proc = {
@@ -111,12 +119,7 @@ test('run preserves the exact child test command and inherits stdio', () => {
 		assert.equal(calls.length, 1);
 		assert.deepEqual(calls[0], [
 			'/usr/local/bin/node',
-			[
-				'--import',
-				'jiti/register',
-				'--test',
-				join(root, 'nested/sample.test.ts'),
-			],
+			['--import', 'jiti/register', '--test', join(root, 'nested/sample.test.ts')],
 			{
 				env: expectedEnv,
 				stdio: 'inherit',
@@ -164,4 +167,11 @@ test('run exits without spawning when no tests are discovered', () => {
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
+});
+
+test('package.json test script points at the launcher', () => {
+	const packageJson = JSON.parse(
+		readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+	);
+	assert.equal(packageJson.scripts.test, 'node test-runner.mjs');
 });
