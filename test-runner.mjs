@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { readdirSync } from 'node:fs';
-import { dirname, relative, resolve, sep } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -42,44 +41,32 @@ export function collectTestFiles(rootDir) {
 	return discoveredFiles.sort();
 }
 
-function run() {
-	const require = createRequire(import.meta.url);
-	const rootDir = process.cwd();
-	const jitiRegisterPath = resolve(
-		dirname(require.resolve('jiti/package.json')),
-		'lib/jiti-register.mjs',
-	);
+export function run({ proc = process, spawn = spawnSync } = {}) {
+	const rootDir = proc.cwd();
 	const testFiles = collectTestFiles(rootDir).map((file) => resolve(rootDir, file));
-	const childEnv = { ...process.env };
+
+	if (testFiles.length === 0) {
+		proc.stderr.write('No test files found.\n');
+		proc.exit(1);
+	}
+
+	const childEnv = { ...proc.env };
 	delete childEnv.NODE_TEST_CONTEXT;
-	const result = spawnSync(
-		process.execPath,
-		['--import', jitiRegisterPath, '--test', ...testFiles],
+
+	const result = spawn(
+		proc.execPath,
+		['--import', 'jiti/register', '--test', ...testFiles],
 		{
-			encoding: 'utf8',
 			env: childEnv,
+			stdio: 'inherit',
 		},
 	);
 
 	if (result.error) {
-		process.exit(1);
+		proc.exit(1);
 	}
 
-	if (result.status === 0) {
-		if (result.stdout) {
-			process.stdout.write(result.stdout);
-		}
-	} else {
-		if (result.stdout) {
-			process.stderr.write(result.stdout);
-		}
-	}
-
-	if (result.stderr) {
-		process.stderr.write(result.stderr);
-	}
-
-	process.exit(result.status ?? 1);
+	proc.exit(result.status ?? 1);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
