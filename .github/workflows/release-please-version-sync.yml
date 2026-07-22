@@ -131,10 +131,13 @@ jobs:
               run: |
                   set -euo pipefail
 
-                  REMOTE_HEAD="$(git -c http.extraheader="AUTHORIZATION: bearer $PUSH_TOKEN" ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+                  AUTH_HEADER="$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 | tr -d '\n')"
+                  echo "::add-mask::$AUTH_HEADER"
+
+                  REMOTE_HEAD="$(git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
                   if [ "$REMOTE_HEAD" != "$HEAD_SHA" ]; then
                     echo "Remote branch changed after this event; refusing to push."
                     exit 1
                   fi
 
-                  git -c http.extraheader="AUTHORIZATION: bearer $PUSH_TOKEN" push HEAD:"$BRANCH"
+                  git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" push origin "HEAD:refs/heads/$BRANCH"

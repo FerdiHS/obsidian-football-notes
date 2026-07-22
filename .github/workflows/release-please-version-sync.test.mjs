@@ -7,8 +7,10 @@ import { env } from 'node:process';
 import { join } from 'node:path';
 import test from 'node:test';
 
+const repositoryRoot = new URL('../../', import.meta.url);
+
 const workflow = await readFile(
-	new URL('./release-please-version-sync.yml', import.meta.url),
+	new URL('.github/workflows/release-please-version-sync.yml', repositoryRoot),
 	'utf8',
 );
 
@@ -81,7 +83,7 @@ test('runs the release metadata synchronizer only from trusted immutable code', 
 	assert.match(workflow, /git ls-files --others --ignored --exclude-standard/);
 	assert.match(workflow, /git diff --name-only/);
 	assert.match(workflow, /ls-remote origin "refs\/heads\/\$BRANCH"/);
-	assert.match(workflow, /push HEAD:"\$BRANCH"/);
+	assert.match(workflow, /push origin "HEAD:refs\/heads\/\$BRANCH"/);
 	assert.doesNotMatch(workflow, /npm ci/);
 	assert.doesNotMatch(workflow, /npm run version:(sync|check)/);
 	assert.doesNotMatch(workflow, /--force(?:-with-lease)?/);
@@ -100,9 +102,24 @@ test('runs the release metadata synchronizer only from trusted immutable code', 
 
 	const pushCommands = [...workflow.matchAll(/^\s*git .* push\b.*$/gm)];
 	assert.equal(pushCommands.length, 1);
-	assert.match(pushCommands[0][0], /push HEAD:"\$BRANCH"$/);
+	assert.match(pushCommands[0][0], /push origin "HEAD:refs\/heads\/\$BRANCH"$/);
 	assertAppearsBefore('ls-remote origin "refs/heads/$BRANCH"', pushCommands[0][0].trim());
 	assert.doesNotMatch(pushCommands[0][0], /--force(?:-with-lease)?/);
+});
+
+test('authenticates guarded Git operations with a masked Basic header', () => {
+	assert.match(workflow, /printf 'x-access-token:%s' "\$PUSH_TOKEN"/);
+	assert.match(workflow, /base64 \| tr -d '\\n'/);
+	assert.match(workflow, /echo "::add-mask::\$AUTH_HEADER"/);
+
+	const basicHeaderUses =
+		workflow.match(
+			/http\.https:\/\/github\.com\/\.extraheader=AUTHORIZATION: basic \$AUTH_HEADER/g,
+		) ?? [];
+	assert.equal(basicHeaderUses.length, 2);
+
+	assert.doesNotMatch(workflow, /AUTHORIZATION: bearer \$PUSH_TOKEN/);
+	assert.doesNotMatch(workflow, /https:\/\/x-access-token:/);
 });
 
 test('executes the trusted ESM synchronizer through its temporary file', (t) => {
@@ -116,9 +133,12 @@ test('executes the trusted ESM synchronizer through its temporary file', (t) => 
 	const directory = mkdtempSync(join(tmpdir(), 'release-please-trusted-script-'));
 	try {
 		for (const file of ['package.json', 'manifest.json', 'versions.json']) {
-			writeFileSync(join(directory, file), readFileSync(file));
+			writeFileSync(join(directory, file), readFileSync(new URL(file, repositoryRoot)));
 		}
-		writeFileSync(join(directory, 'version-bump.mjs'), readFileSync('version-bump.mjs'));
+		writeFileSync(
+			join(directory, 'version-bump.mjs'),
+			readFileSync(new URL('version-bump.mjs', repositoryRoot)),
+		);
 
 		assert.doesNotThrow(() =>
 			execFileSync(
