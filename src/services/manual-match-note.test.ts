@@ -245,6 +245,93 @@ void test('createManualMatchNoteWorkflow rejects match teams that normalize to e
 	]);
 });
 
+void test('createManualMatchNoteWorkflow reports empty home teams before treating them as a collision', async () => {
+	const calls: Array<unknown> = [];
+
+	const result = await createManualMatchNoteWorkflow(
+		{
+			homeTeam: '.',
+			awayTeam: '...',
+			matchDate: '2026-07-01',
+			competition: 'La Liga',
+			sourceUrl: 'https://example.com/match',
+		},
+		{
+			destinationFolder: 'Football notes/matches',
+			parseMatchUrl: () => {
+				throw new Error('should not be called');
+			},
+			resolveTeamNotes: async () => {
+				throw new Error('should not be called');
+			},
+			createMatchNoteFile: async () => {
+				throw new Error('should not be called');
+			},
+			openMatchNote: async () => {
+				throw new Error('should not be called');
+			},
+			showNotice: (message) => {
+				calls.push(['notice', message]);
+			},
+			logError: (message, error) => {
+				calls.push(['error', message, (error as Error).message]);
+			},
+		},
+	);
+
+	assert.equal(result, false);
+	assert.deepEqual(calls, [
+		['notice', 'Manual match note home team cannot become a valid wiki link target.'],
+	]);
+});
+
+void test('createManualMatchNoteWorkflow rejects colliding team paths before any downstream work', async () => {
+	for (const [homeTeam, awayTeam] of [
+		['Real Madrid', 'Real Madrid'],
+		['Real Madrid', 'real madrid'],
+		['  Real Madrid  ', 'Real Madrid'],
+		['A:B', 'A-B'],
+	] as const) {
+		const calls: Array<unknown> = [];
+
+		const result = await createManualMatchNoteWorkflow(
+			{
+				homeTeam,
+				awayTeam,
+				matchDate: '2026-07-01',
+				competition: 'La Liga',
+				sourceUrl: 'https://example.com/match',
+			},
+			{
+				destinationFolder: 'Football notes/matches',
+				parseMatchUrl: () => {
+					throw new Error('should not be called');
+				},
+				resolveTeamNotes: async () => {
+					throw new Error('should not be called');
+				},
+				createMatchNoteFile: async () => {
+					throw new Error('should not be called');
+				},
+				openMatchNote: async () => {
+					throw new Error('should not be called');
+				},
+				showNotice: (message) => {
+					calls.push(['notice', message]);
+				},
+				logError: (message, error) => {
+					calls.push(['error', message, (error as Error).message]);
+				},
+			},
+		);
+
+		assert.equal(result, false);
+		assert.deepEqual(calls, [
+			['notice', 'Manual match note home and away teams must be different.'],
+		]);
+	}
+});
+
 void test('createManualMatchNoteWorkflow reports team note resolution failures', async () => {
 	const calls: Array<unknown> = [];
 

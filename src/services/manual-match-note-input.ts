@@ -1,3 +1,5 @@
+import { sanitizeNoteTitle } from './note-title';
+
 export interface ManualMatchNoteValidationSuccess<T> {
 	ok: true;
 	value: T;
@@ -116,4 +118,26 @@ export function normalizeOptionalManualMatchNoteSourceUrl(
 	const trimmedValue = value?.trim();
 
 	return trimmedValue !== undefined && trimmedValue.length > 0 ? trimmedValue : undefined;
+}
+
+export function validateManualMatchNoteTeamPathCollision(
+	homeTeam: string,
+	awayTeam: string,
+): ManualMatchNoteValidationResult<void> {
+	const normalizedHomeTeam = sanitizeNoteTitle(homeTeam).toLowerCase();
+	const normalizedAwayTeam = sanitizeNoteTitle(awayTeam).toLowerCase();
+
+	if (normalizedHomeTeam === normalizedAwayTeam) {
+		return {
+			ok: false,
+			error: {
+				message: 'Manual match note home and away teams must be different.',
+			},
+		};
+	}
+
+	return {
+		ok: true,
+		value: undefined,
+	};
 }
