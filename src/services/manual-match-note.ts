@@ -6,6 +6,7 @@ import {
 	normalizeRequiredManualMatchNoteField,
 	normalizeManualMatchNoteWikiLinkTarget,
 	normalizeOptionalManualMatchNoteSourceUrl,
+	validateManualMatchNoteTeamPathCollision,
 } from './manual-match-note-input';
 import { formatUserFacingErrorNotice } from './user-facing-error';
 import type { ManualMatchNoteInput, ManualMatchNoteSubmission } from '../types';
@@ -155,6 +156,11 @@ function normalizeManualMatchNoteSubmission(
 	const competition = normalizeRequiredManualMatchNoteField(input.competition, 'competition');
 	if (!competition.ok) {
 		return competition;
+	}
+
+	const teamCollision = validateManualMatchNoteTeamPathCollision(homeTeam.value, awayTeam.value);
+	if (!teamCollision.ok) {
+		return teamCollision;
 	}
 
 	const homeTeamLinkTarget = normalizeManualMatchNoteWikiLinkTarget(homeTeam.value, 'home team');
