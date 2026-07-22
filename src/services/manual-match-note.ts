@@ -158,11 +158,6 @@ function normalizeManualMatchNoteSubmission(
 		return competition;
 	}
 
-	const teamCollision = validateManualMatchNoteTeamPathCollision(homeTeam.value, awayTeam.value);
-	if (!teamCollision.ok) {
-		return teamCollision;
-	}
-
 	const homeTeamLinkTarget = normalizeManualMatchNoteWikiLinkTarget(homeTeam.value, 'home team');
 	if (!homeTeamLinkTarget.ok) {
 		return homeTeamLinkTarget;
@@ -171,6 +166,11 @@ function normalizeManualMatchNoteSubmission(
 	const awayTeamLinkTarget = normalizeManualMatchNoteWikiLinkTarget(awayTeam.value, 'away team');
 	if (!awayTeamLinkTarget.ok) {
 		return awayTeamLinkTarget;
+	}
+
+	const teamCollision = validateManualMatchNoteTeamPathCollision(homeTeam.value, awayTeam.value);
+	if (!teamCollision.ok) {
+		return teamCollision;
 	}
 
 	const sourceUrl = normalizeOptionalManualMatchNoteSourceUrl(input.sourceUrl);
