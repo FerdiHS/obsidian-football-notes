@@ -53,14 +53,10 @@ export function run({ proc = process, spawn = spawnSync } = {}) {
 	const childEnv = { ...proc.env };
 	delete childEnv.NODE_TEST_CONTEXT;
 
-	const result = spawn(
-		proc.execPath,
-		['--import', 'jiti/register', '--test', ...testFiles],
-		{
-			env: childEnv,
-			stdio: 'inherit',
-		},
-	);
+	const result = spawn(proc.execPath, ['--import', 'jiti/register', '--test', ...testFiles], {
+		env: childEnv,
+		stdio: 'inherit',
+	});
 
 	if (result.error) {
 		proc.exit(1);
