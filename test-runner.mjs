@@ -16,7 +16,7 @@ export function collectTestFiles(rootDir) {
 	function walk(currentDir) {
 		for (const entry of readdirSync(currentDir, { withFileTypes: true })) {
 			if (entry.isDirectory()) {
-				if (entry.name === 'node_modules') {
+				if (entry.name === 'node_modules' || entry.name === '.git') {
 					continue;
 				}
 

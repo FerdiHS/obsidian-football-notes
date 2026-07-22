@@ -25,6 +25,11 @@ test('collectTestFiles returns sorted repo-relative supported tests', () => {
 			'.github/workflows/b.test.mjs',
 			"import test from 'node:test'; test('b', () => {});",
 		);
+		writeFixture(
+			root,
+			'.git/ignored.test.ts',
+			"import test from 'node:test'; test('ignored', () => {});",
+		);
 		writeFixture(root, 'src/b.test.ts', "import test from 'node:test'; test('b', () => {});");
 		writeFixture(root, 'src/a.test.ts', "import test from 'node:test'; test('a', () => {});");
 		writeFixture(root, 'src/ui/named-note-modal-test-support.ts', 'export {};');
@@ -103,7 +108,6 @@ test('run preserves the exact child test command and inherits stdio', () => {
 		assert.throws(
 			() =>
 				run({
-					createRequireImpl: () => ({ resolve: () => '/tmp/fake-jiti-package.json' }),
 					proc,
 					spawn: (...args) => {
 						calls.push(args);
@@ -152,7 +156,6 @@ test('run exits without spawning when no tests are discovered', () => {
 		assert.throws(
 			() =>
 				run({
-					createRequireImpl: () => ({ resolve: () => '/tmp/fake-jiti-package.json' }),
 					proc,
 					spawn: () => {
 						spawnCalled = true;
