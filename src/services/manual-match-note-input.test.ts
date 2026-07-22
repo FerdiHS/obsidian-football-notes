@@ -5,6 +5,7 @@ import {
 	normalizeManualMatchDate,
 	normalizeManualMatchNoteWikiLinkTarget,
 	normalizeRequiredManualMatchNoteField,
+	validateManualMatchNoteTeamPathCollision,
 } from './manual-match-note-input';
 
 void test('normalizeManualMatchDate accepts trimmed ISO dates', () => {
@@ -72,4 +73,27 @@ void test('normalizeRequiredManualMatchNoteField trims and rejects empty fields'
 		result.ok ? undefined : result.error.message,
 		'Manual match note away team cannot be empty.',
 	);
+});
+
+void test('validateManualMatchNoteTeamPathCollision rejects exact, whitespace-equivalent, and sanitized collisions', () => {
+	for (const [homeTeam, awayTeam] of [
+		['Real Madrid', 'Real Madrid'],
+		['  Real Madrid  ', 'Real Madrid'],
+		['A:B', 'A-B'],
+	] as const) {
+		const result = validateManualMatchNoteTeamPathCollision(homeTeam, awayTeam);
+
+		assert.equal(result.ok, false);
+		assert.equal(
+			result.ok ? undefined : result.error.message,
+			'Manual match note home and away teams must be different.',
+		);
+	}
+});
+
+void test('validateManualMatchNoteTeamPathCollision allows distinct team paths', () => {
+	assert.deepEqual(validateManualMatchNoteTeamPathCollision('Real Madrid', 'Barcelona'), {
+		ok: true,
+		value: undefined,
+	});
 });
