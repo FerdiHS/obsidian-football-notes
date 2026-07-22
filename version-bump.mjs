@@ -7,7 +7,7 @@ function readJson(path) {
 }
 
 function writeJson(path, value) {
-	writeFileSync(path, JSON.stringify(value, null, '\t'));
+	writeFileSync(path, `${JSON.stringify(value, null, '\t')}\n`);
 }
 
 const packageJson = readJson('package.json');
@@ -61,11 +61,12 @@ if (mode !== 'sync') {
 	process.exit(1);
 }
 
-let changed = false;
+let manifestChanged = false;
+let versionsChanged = false;
 
 if (manifestVersion !== packageVersion) {
 	manifest.version = packageVersion;
-	changed = true;
+	manifestChanged = true;
 }
 
 if (
@@ -73,10 +74,13 @@ if (
 	(shouldRefreshRecordedMinAppVersion && recordedMinAppVersion !== minAppVersion)
 ) {
 	versions[packageVersion] = minAppVersion;
-	changed = true;
+	versionsChanged = true;
 }
 
-if (changed) {
+if (manifestChanged) {
 	writeJson('manifest.json', manifest);
+}
+
+if (versionsChanged) {
 	writeJson('versions.json', versions);
 }
