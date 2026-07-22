@@ -124,7 +124,10 @@ export function validateManualMatchNoteTeamPathCollision(
 	homeTeam: string,
 	awayTeam: string,
 ): ManualMatchNoteValidationResult<void> {
-	if (sanitizeNoteTitle(homeTeam) === sanitizeNoteTitle(awayTeam)) {
+	const normalizedHomeTeam = sanitizeNoteTitle(homeTeam).toLowerCase();
+	const normalizedAwayTeam = sanitizeNoteTitle(awayTeam).toLowerCase();
+
+	if (normalizedHomeTeam === normalizedAwayTeam) {
 		return {
 			ok: false,
 			error: {

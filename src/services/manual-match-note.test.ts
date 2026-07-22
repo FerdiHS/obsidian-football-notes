@@ -248,6 +248,7 @@ void test('createManualMatchNoteWorkflow rejects match teams that normalize to e
 void test('createManualMatchNoteWorkflow rejects colliding team paths before any downstream work', async () => {
 	for (const [homeTeam, awayTeam] of [
 		['Real Madrid', 'Real Madrid'],
+		['Real Madrid', 'real madrid'],
 		['  Real Madrid  ', 'Real Madrid'],
 		['A:B', 'A-B'],
 	] as const) {

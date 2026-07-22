@@ -78,6 +78,7 @@ void test('normalizeRequiredManualMatchNoteField trims and rejects empty fields'
 void test('validateManualMatchNoteTeamPathCollision rejects exact, whitespace-equivalent, and sanitized collisions', () => {
 	for (const [homeTeam, awayTeam] of [
 		['Real Madrid', 'Real Madrid'],
+		['Real Madrid', 'real madrid'],
 		['  Real Madrid  ', 'Real Madrid'],
 		['A:B', 'A-B'],
 	] as const) {
