@@ -84,6 +84,35 @@ This repository uses Conventional Commits because Release Please reads commit hi
 - `feat!:` / `fix!:` / `refactor!:` and other `!` commits mark breaking changes
 - `chore:`, `docs:`, and most `refactor:` commits do not trigger releases by themselves
 
+### Pull request titles and squash merges
+
+Normal pull request titles must use Conventional Commit format:
+
+```text
+<type>(optional-scope): <summary>
+```
+
+Pull requests are normally squash-merged. The pull request title therefore normally becomes the final squash commit subject on `main`, which Release Please uses to classify the change and prepare the changelog and version bump.
+
+Reserve `feat:` and `fix:` for changes to shipped plugin behavior:
+
+- Use `feat:` when adding a new plugin capability or other user-facing behavior.
+- Use `fix:` when correcting existing shipped plugin behavior.
+
+Use an appropriate non-product type when the shipped plugin behavior is unchanged:
+
+| Change                                  | Example pull request title                       |
+| --------------------------------------- | ------------------------------------------------ |
+| Documentation only                      | `docs: document pull request conventions`        |
+| Tests only                              | `test: cover test-file discovery`                |
+| CI only                                 | `ci: update validation workflow`                 |
+| Behavior-preserving restructuring       | `refactor: simplify note creation wiring`        |
+| Release tooling or workflow maintenance | `chore(release): harden version synchronization` |
+
+A scope does not override the Conventional Commit type. For example, `fix(ci):` and `fix(release):` are still `fix` commits and can be classified as bug fixes by Release Please. Use `ci:` or `chore(release):` when the change does not correct shipped plugin behavior.
+
+Before squash-merging a pull request, verify that the final squash commit subject uses the intended Conventional Commit type. Correct the subject in GitHub's merge form when necessary.
+
 Release Please manages `package.json`, `package-lock.json`, `manifest.json`, and `CHANGELOG.md` after merges to `main`.
 Tags intentionally omit a leading `v` so Git tags match the Obsidian plugin version format.
 
