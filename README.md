@@ -13,6 +13,39 @@ Planned focus areas:
 - isolated provider integrations
 - preserving user-authored note content during refresh flows
 
+## Usage
+
+### Installation
+
+- For end-user installs, download `main.js` and `manifest.json` from the relevant GitHub release and copy them into `<Vault>/.obsidian/plugins/football-notes/`.
+- If you're developing from source, use the direct-checkout workflow in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+### Commands
+
+- `Create match note from URL`: validate a football match URL, create a structured placeholder note, and open it. It does not fetch teams, scores, dates, lineups, statistics, or provider data.
+- `Create match note manually`: collect home team, away team, match date, competition, and optional source URL; reuse or create linked team notes; then create the match note.
+- `Create team note`: create or reuse a team note from a team name.
+- `Create player note`: create or reuse a player note from a player name.
+
+### Settings and generated notes
+
+- Match notes use `Football notes/matches` by default, team notes use `Football notes/teams`, and player notes use `Football notes/players`.
+- Folder values are vault-relative and normalized before use.
+- Existing compatible team and player notes are reused instead of duplicated.
+- Match notes are not reused solely because a generated path is occupied; the plugin chooses an available filename instead.
+- The plugin avoids overwriting existing notes and reports folder or incompatible-note collisions clearly.
+- Manual match note home and away teams must be different. Names that resolve to the same sanitized, case-insensitive team-note path are rejected.
+- Manual match creation can leave already-created team notes in the vault if match-note creation fails later.
+- See the [canonical match note schema](./docs/match-note-schema.md) and [team/player note schemas](./docs/team-player-note-schema.md) for the note shapes.
+
+### Limitations
+
+- No provider-backed fetching yet.
+- No score extraction, statistics extraction, or lineup extraction yet.
+- No automatic player creation from matches yet.
+- No fuzzy alias matching yet.
+- No automatic rewriting of existing user-authored notes yet.
+
 ## Development
 
 Requirements:
