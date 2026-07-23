@@ -22,6 +22,7 @@ See:
 ## Repository invariants
 
 - Keep changes scoped to the requested issue and avoid unrelated refactors.
+- Use an appropriate Conventional Commit-style pull request title. Because the title normally becomes the squash commit subject and affects Release Please, reserve `feat:` and `fix:` for changes to shipped plugin behavior; use types such as `docs:`, `test:`, `ci:`, `refactor:`, or `chore(release):` for non-product changes.
 - Preserve user-authored note content.
 - Keep provider-specific logic isolated from core note generation.
 - Use Obsidian APIs for vault and file operations.
