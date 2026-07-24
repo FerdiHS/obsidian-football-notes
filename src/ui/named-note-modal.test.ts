@@ -3,12 +3,12 @@ import { setImmediate } from 'node:timers/promises';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
-import { ButtonComponent, TextComponent } from './named-note-modal-test-support';
+import { ButtonComponent, TextComponent } from './modal-test-support';
 
 let NamedNoteModal: typeof import('./named-note-modal').NamedNoteModal;
 const namedNoteModalReady = createJiti(import.meta.url, {
 	alias: {
-		obsidian: fileURLToPath(new URL('./named-note-modal-test-support.ts', import.meta.url)),
+		obsidian: fileURLToPath(new URL('./modal-test-support.ts', import.meta.url)),
 	},
 	moduleCache: false,
 	fsCache: false,
