@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/FerdiHS/obsidian-football-notes/compare/football-notes-0.2.0...football-notes-0.3.0) (2026-07-24)
+
+
+### Features
+
+* add team/player note foundation and manual match creation ([#47](https://github.com/FerdiHS/obsidian-football-notes/issues/47)) ([f4d44a2](https://github.com/FerdiHS/obsidian-football-notes/commit/f4d44a2153c1d6edebe41bfad0f2df7837b68c99))
+* auto-create linked team notes from manual match notes ([#50](https://github.com/FerdiHS/obsidian-football-notes/issues/50)) ([bc2c2b5](https://github.com/FerdiHS/obsidian-football-notes/commit/bc2c2b558a81db4a538c9a911274312ba89de789))
+
+
+### Bug Fixes
+
+* harden Release Please merge and version synchronization ([#66](https://github.com/FerdiHS/obsidian-football-notes/issues/66)) ([94b4e3d](https://github.com/FerdiHS/obsidian-football-notes/commit/94b4e3d807b4b6c51805bfcd67fa3b9ec1b742b0))
+* reject manual match inputs with colliding team-note paths ([#68](https://github.com/FerdiHS/obsidian-football-notes/issues/68)) ([52dc91f](https://github.com/FerdiHS/obsidian-football-notes/commit/52dc91f53cea651edfddb35dd07715bd6fe8d616))
+* restore Release Please version synchronization ([#67](https://github.com/FerdiHS/obsidian-football-notes/issues/67)) ([056adf4](https://github.com/FerdiHS/obsidian-football-notes/commit/056adf475ac81b1ba1682afe0d49f28cca541fd3))
+* use typed create errors and shared named-note wiring ([#54](https://github.com/FerdiHS/obsidian-football-notes/issues/54)) ([8753cf5](https://github.com/FerdiHS/obsidian-football-notes/commit/8753cf5554543b945dcdfc4e19a024a9767cef59))
+
 ## [0.2.0](https://github.com/FerdiHS/obsidian-football-notes/compare/football-notes-0.1.1...football-notes-0.2.0) (2026-06-25)
 
 
